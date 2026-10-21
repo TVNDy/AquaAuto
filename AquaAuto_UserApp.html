@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DyAuto - Quản Lý Nông Nghiệp</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- PWA Manifest link (Bạn cần tạo file manifest.json riêng cho PWA thực tế) -->
+  <link rel="manifest" href="manifest.json">
+  <style>
+    -webkit-tap-highlight-color: transparent;
+    .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    /* Nút toggle mượt mà */
+    .toggle-checkbox:checked { right: 0; border-color: #10B981; }
+    .toggle-checkbox:checked + .toggle-label { background-color: #10B981; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-24 font-sans select-none relative">
+
+  <!-- ==================== BANNER PWA CÀI ĐẶT ==================== -->
+  <div id="pwa-install-banner" class="hidden bg-blue-600 text-white p-3 flex justify-between items-center shadow-md sticky top-0 z-50">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl">📱</span>
+      <div>
+        <p class="text-sm font-bold">Cài đặt DyAuto</p>
+        <p class="text-[10px] text-blue-200">Ghim ra màn hình chính để dùng như App</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="hidePwaBanner()" class="text-blue-200 hover:text-white px-2 py-1 text-xs">Để sau</button>
+      <button id="pwa-install-btn" class="bg-white text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold shadow">Cài đặt</button>
+    </div>
+  </div>
+
+  <!-- Header Cố Định -->
+  <header class="bg-emerald-700 text-white px-4 py-3.5 shadow sticky top-0 z-40 flex justify-between items-center">
+    <div class="flex items-center space-x-2">
+      <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center font-black text-emerald-200">D</div>
+      <div>
+        <h1 class="text-base font-bold leading-tight">DyAuto Controller</h1>
+        <p class="text-[11px] text-emerald-200">Mã trạm: <span id="header-gw-name" class="font-mono font-bold text-white">Đang tải...</span></p>
+      </div>
+    </div>
+    <div id="conn-pill" class="flex items-center space-x-1.5 bg-emerald-900/60 px-2.5 py-1 rounded-full text-xs border border-emerald-500/30">
+      <span id="conn-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+      <span id="conn-text" class="text-[11px] font-medium">Đang kết nối...</span>
+    </div>
+  </header>
+
+  <!-- Banner Cảnh Báo Khẩn Cấp (Mất điện bờ ao) -->
+  <div id="power-alert" class="hidden bg-rose-600 text-white p-3.5 shadow-lg sticky top-[60px] z-30 animate-bounce border-b border-rose-800">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <span class="text-xl">⚠️</span>
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider">Mất điện bờ ao!</p>
+          <p class="text-[10px] text-rose-100">Kiểm tra ngay nguồn điện lưới hoặc CB.</p>
+        </div>
+      </div>
+      <button onclick="document.getElementById('power-alert').classList.add('hidden')" class="bg-white text-rose-700 text-xs font-bold px-2.5 py-1.5 rounded shadow">Đã xem</button>
+    </div>
+  </div>
+
+  <main class="max-w-md mx-auto p-4">
+
+    <!-- ==================== TAB 1: BẢNG ĐIỀU KHIỂN ==================== -->
+    <section id="tab-dashboard" class="space-y-4">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex justify-between items-center">
+        <div>
+          <span class="text-xs text-slate-400 font-medium block">Số trạm bờ ao</span>
+          <span class="text-lg font-bold text-slate-800"><span id="active-nodes-count">1</span> Trạm hoạt động</span>
+        </div>
+        <button onclick="switchTab('devices')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-2 rounded-xl border border-emerald-200 transition">
+          + Ghép Trạm
+        </button>
+      </div>
+
+      <div id="nodes-container" class="space-y-3">
+        <!-- Node Cards render động -->
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: LỊCH TRÌNH ==================== -->
+    <section id="tab-schedules" class="hidden space-y-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Lịch Tự Động</h2>
+          <p class="text-[11px] text-slate-400">Tự động chạy ngầm dưới tủ</p>
+        </div>
+        <button onclick="alert('Tính năng thêm lịch sẽ mở form chọn giờ.')" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl shadow">
+          + Tạo lịch
+        </button>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex justify-between items-center">
+        <div>
+           <div class="flex items-center space-x-1.5">
+              <span class="text-xs font-bold text-slate-800">22:00 → 04:30</span>
+              <span class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold">Ao 1</span>
+           </div>
+           <p class="text-[11px] text-slate-400 mt-1">Lặp: T2, T3, T4, T5, T6, T7, CN</p>
+        </div>
+        <input type="checkbox" checked class="w-4 h-4 accent-emerald-600 rounded">
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: CÀI ĐẶT ==================== -->
+    <section id="tab-devices" class="hidden space-y-4">
+      <!-- Cài đặt mã trạm -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+        <h3 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">Thông tin Gateway</h3>
+        <div class="text-xs space-y-2">
+           <div class="flex justify-between"><span class="text-slate-500">Gateway ID:</span> <span id="settings-gw-id" class="font-mono font-bold">...</span></div>
+           <div class="flex justify-between"><span class="text-slate-500">Secret Key:</span> <span id="settings-key" class="font-mono font-bold text-emerald-600">***</span></div>
+        </div>
+      </div>
+      <!-- Nút ghép đôi Node mới -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+        <div class="flex items-center space-x-2 border-b border-slate-100 pb-2">
+          <span class="text-xl">📡</span>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Ghép Tủ Bờ Ao Mới</h3>
+            <p class="text-[11px] text-slate-400">Thêm cụm thiết bị vào mạng LoRa</p>
+          </div>
+        </div>
+        <button onclick="startPairing()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow transition">
+          Mở Quét Ghép Đôi (60s)
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2 z-40">
+    <div class="max-w-md mx-auto flex justify-around">
+      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center text-emerald-700 font-bold">
+        <span class="text-xl">🎛️</span><span class="text-[10px] mt-0.5">Bảng Điều Khiển</span>
+      </button>
+      <button onclick="switchTab('schedules')" id="nav-schedules" class="flex flex-col items-center text-slate-400 font-medium">
+        <span class="text-xl">⏰</span><span class="text-[10px] mt-0.5">Lịch Trình</span>
+      </button>
+      <button onclick="switchTab('devices')" id="nav-devices" class="flex flex-col items-center text-slate-400 font-medium">
+        <span class="text-xl">⚙️</span><span class="text-[10px] mt-0.5">Cài Đặt</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Toast (Thông báo nổi) -->
+  <div id="toast" class="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-xl shadow-xl text-xs opacity-0 transition-opacity z-50 text-center max-w-[85%] font-medium pointer-events-none"></div>
+
+  <script>
+    // 1. TRÍCH XUẤT QR & BẢO MẬT KHÔNG TÀI KHOẢN[cite: 4]
+    const urlParams = new URLSearchParams(window.location.search);
+    const gatewayId = urlParams.get('id') || localStorage.getItem('aq_gw_id') || 'GW_01';
+    const secretKey = urlParams.get('key') || localStorage.getItem('aq_secret') || 'K87B';
+    
+    // Lưu vĩnh viễn[cite: 4]
+    localStorage.setItem('aq_gw_id', gatewayId);
+    localStorage.setItem('aq_secret', secretKey);
+    
+    document.getElementById('header-gw-name').innerText = gatewayId;
+    document.getElementById('settings-gw-id').innerText = gatewayId;
+
+    let nodesList = [
+      { id: 1, name: "Quạt Sục Khí - Ao 1", state: "OFF", rssi: -75, power: "OK" }
+    ];
+    
+    let client = null;
+    let commandLock = false; // Phục vụ Debounce[cite: 4]
+
+    // --- TÍNH NĂNG PWA (Cài đặt ra màn hình) ---
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('pwa-install-banner').classList.remove('hidden');
+    });
+
+    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') hidePwaBanner();
+        deferredPrompt = null;
+      }
+    });
+
+    function hidePwaBanner() {
+      document.getElementById('pwa-install-banner').classList.add('hidden');
+    }
+
+    // --- TIỆN ÍCH UI ---
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.classList.remove('opacity-0');
+      setTimeout(() => toast.classList.add('opacity-0'), 3000);
+    }
+
+    function switchTab(tab) {
+      ['dashboard', 'schedules', 'devices'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        document.getElementById(`nav-${t}`).classList.replace('text-emerald-700', 'text-slate-400');
+        document.getElementById(`nav-${t}`).classList.remove('font-bold');
+      });
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      document.getElementById(`nav-${tab}`).classList.replace('text-slate-400', 'text-emerald-700');
+      document.getElementById(`nav-${tab}`).classList.add('font-bold');
+    }
+
+    // --- HIỂN THỊ DANH SÁCH NODE ---
+    function renderNodes() {
+      const container = document.getElementById('nodes-container');
+      container.innerHTML = '';
+      nodesList.forEach(node => {
+        const isOn = node.state === "ON";
+        container.innerHTML += `
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">${node.name}</h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">Sóng LoRa: <b class="${node.rssi >= -90 ? 'text-emerald-600' : 'text-amber-600'}">${node.rssi}dBm</b></p>
+              </div>
+              <span class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-mono">#${node.id}</span>
+            </div>
+            
+            <div class="flex items-center justify-between pt-2 border-t border-slate-50">
+              <div>
+                <span class="text-[11px] font-bold ${isOn ? 'text-emerald-600' : 'text-slate-400'}">${isOn ? 'Đang Chạy' : 'Đang Tắt'}</span>
+                <span id="subtitle-node-${node.id}" class="block text-[9px] text-slate-400">Nhấn để đổi trạng thái</span>
+              </div>
+              
+              <!-- Toggle Nút bấm: "State of Truth" -->
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input id="toggle-node-${node.id}" type="checkbox" ${isOn ? 'checked' : ''} onchange="sendToggleCommand(${node.id}, this.checked)" class="sr-only peer">
+                <div class="w-14 h-8 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600 shadow-inner"></div>
+              </label>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // --- GIAO TIẾP MQTT & LOGIC CỐT LÕI ---
+    function initMQTT() {
+      // 2. Giao thức MQTT qua WebSockets (port 8084)[cite: 4]
+      const url = `wss://broker.emqx.io:8084/mqtt`;
+      const clientId = 'dyauto_app_' + Math.random().toString(16).substr(2, 8);
+      client = mqtt.connect(url, { clientId, clean: true, reconnectPeriod: 3000 });
+
+      client.on('connect', () => {
+        document.getElementById('conn-dot').className = "w-2 h-2 rounded-full bg-emerald-400";
+        document.getElementById('conn-text').innerText = "Online";
+        
+        // Theo chuẩn bảo mật[cite: 4]
+        client.subscribe(`dyauto/${gatewayId}_${secretKey}/status`);
+      });
+
+      client.on('message', (topic, message) => {
+        try {
+          const payload = JSON.parse(message.toString());
+          if (topic.endsWith('/status')) handleStatusUpdate(payload);
+        } catch (e) {}
+      });
+      
+      client.on('offline', () => {
+         document.getElementById('conn-dot').className = "w-2 h-2 rounded-full bg-rose-500";
+         document.getElementById('conn-text').innerText = "Mất kết nối";
+      });
+    }
+
+    // 3. Cơ chế State of Truth & Debounce[cite: 4]
+    function sendToggleCommand(id, wantedState) {
+      const toggle = document.getElementById(`toggle-node-${id}`);
+      const subtitle = document.getElementById(`subtitle-node-${id}`);
+      
+      // Khóa dội (Debounce): Nếu đang gửi lệnh, chặn thao tác
+      if (commandLock) {
+         toggle.checked = !wantedState; // Hoàn lại trạng thái UI[cite: 4]
+         showToast("Vui lòng đợi 2 giây giữa các lần nhấn!");
+         return;
+      }
+
+      // Ép giao diện trở lại trạng thái cũ (State of Truth) cho đến khi ESP32 báo cáo[cite: 4]
+      toggle.checked = !wantedState; 
+      
+      // Bật cờ khóa nút trong 2 giây[cite: 4]
+      commandLock = true;
+      subtitle.innerText = "Đang truyền lệnh ra ao...";
+      subtitle.classList.add("text-amber-500", "font-bold");
+
+      // Gửi lệnh xuống mạch[cite: 4]
+      const payload = JSON.stringify({ node: id, cmd: wantedState ? "ON" : "OFF" });
+      client.publish(`dyauto/${gatewayId}_${secretKey}/command`, payload, { qos: 1 });
+
+      setTimeout(() => { 
+          commandLock = false; 
+          subtitle.innerText = "Nhấn để đổi trạng thái";
+          subtitle.classList.remove("text-amber-500", "font-bold");
+      }, 2000); 
+    }
+
+    function handleStatusUpdate(data) {
+      const node = nodesList.find(n => n.id === data.node);
+      if (node) {
+        // Cập nhật trạng thái thực tế
+        if (data.state) node.state = data.state;
+        if (data.rssi) node.rssi = data.rssi;
+        
+        // Cảnh báo mất điện[cite: 4]
+        if (data.power) {
+          node.power = data.power;
+          if (data.power === "LOST") {
+             document.getElementById('power-alert').classList.remove('hidden');
+          }
+        }
+        
+        // Render lại UI bằng thông số thực tế (State of truth)
+        renderNodes();
+      }
+    }
+
+    function startPairing() {
+        showToast("Đang mở mạng quét tủ bờ ao trong 60 giây...");
+        const payload = JSON.stringify({ type: "START_PAIRING", timeout: 60 });
+        client.publish(`dyauto/${gatewayId}_${secretKey}/command`, payload, { qos: 1 });
+    }
+
+    // Khởi chạy
+    window.onload = () => {
+      renderNodes();
+      initMQTT();
+    };
+  </script>
+</body>
+</html>
