@@ -1,338 +1,211 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>DyAuto - Quản Lý Nông Nghiệp</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <!-- PWA Manifest link (Bạn cần tạo file manifest.json riêng cho PWA thực tế) -->
-  <link rel="manifest" href="manifest.json">
-  <style>
-    -webkit-tap-highlight-color: transparent;
-    .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-    /* Nút toggle mượt mà */
-    .toggle-checkbox:checked { right: 0; border-color: #10B981; }
-    .toggle-checkbox:checked + .toggle-label { background-color: #10B981; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0c5d54">
+<title>AquaAuto — User App MVP</title>
+<style>
+:root {
+  --site-primary: #0C5D54;
+  --site-on-primary: #FFFFFF;
+  --site-secondary: #DCEFE8;
+  --site-on-secondary: #153F38;
+  --site-background: #F3F7F5;
+  --site-on-background: #172A26;
+  --site-font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --site-font-heading: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --site-heading-scale: 1;
+  --site-spacing-scale: 1;
+  --site-radius-scale: 1;
+  --site-decoration-opacity: 1;
+  --surface: light-dark(#FFFFFF, #182521);
+  --surface-soft: light-dark(#F7FAF8, #202F2A);
+  --line: light-dark(#DDE7E2, #344740);
+  --muted: light-dark(#667770, #A6B8B0);
+  --good: #16845D;
+  --bad: #B84B45;
+  --warning: #A76A16;
+}
+* { box-sizing: border-box; }
+html { color-scheme: light dark; }
+body { margin: 0; background: var(--site-background); color: var(--site-on-background); font-family: var(--site-font-body); }
+#app { min-height: 100vh; width: 100%; border-radius: 0; background: var(--site-background); }
+.topbar { background: var(--site-primary); color: var(--site-on-primary); padding: calc(22px * var(--site-spacing-scale)) max(20px, calc((100vw - 1040px)/2)); }
+.brandrow { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.brand { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:-.03em; font-size:20px; }
+.logo { width:42px; height:42px; border-radius: calc(14px * var(--site-radius-scale)); background: rgba(255,255,255,.15); display:grid; place-items:center; }
+.logo svg { width:25px; height:25px; }
+.kicker { color: #BDE8D7; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
+.topright { display:flex; align-items:center; gap:8px; font-size:12px; color:#D9F0E7; }
+.pulse { width:8px;height:8px;border-radius:50%;background:#F4C76B; box-shadow:0 0 0 4px rgba(244,199,107,.15); }
+.wrap { max-width:1040px; margin:0 auto; padding:28px 20px 46px; }
+.welcome { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; margin-bottom:24px; }
+h1 { font-size:calc(30px * var(--site-heading-scale)); letter-spacing:-.045em; margin:7px 0 8px; line-height:1.12; }
+.sub { color:var(--muted); margin:0; line-height:1.55; font-size:14px; }
+.eyebrow { font-size:11px; letter-spacing:.13em; font-weight:800; color:var(--site-primary); text-transform:uppercase; }
+.mode { border:1px solid var(--line); background:var(--surface); color:var(--muted); padding:9px 12px; border-radius:999px; font-size:12px; white-space:nowrap; }
+.layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.8fr); gap:18px; align-items:start; }
+.card { background:var(--surface); border:1px solid var(--line); border-radius:calc(22px * var(--site-radius-scale)); padding:22px; box-shadow:0 8px 24px rgba(17,52,41,.035); }
+.cardhead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px; }
+h2 { font-size:16px; letter-spacing:-.02em; margin:0; }
+.gateway { display:flex; align-items:center; gap:12px; }
+.gatewayicon { width:45px;height:45px;display:grid;place-items:center;background:var(--site-secondary);color:var(--site-on-secondary);border-radius:14px; }
+.gatewayicon svg { width:24px;height:24px; }
+.gatewayname { font-weight:750; font-size:15px; }
+.smallmuted { color:var(--muted); font-size:12px; margin-top:4px; }
+.pill { display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:750;background:var(--surface-soft);color:var(--muted);white-space:nowrap; }
+.pill .dot { width:6px;height:6px;border-radius:50%;background:currentColor; }
+.pill.good { color:var(--good); background:light-dark(#E6F5ED,#1D3A2E); }
+.pill.bad { color:var(--bad); background:light-dark(#FBECEB,#412A28); }
+.divider { border:0;border-top:1px solid var(--line); margin:18px 0; }
+.device { background:var(--surface-soft); border-radius:18px; padding:18px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+.devicecopy { display:flex; align-items:center; gap:14px; }
+.deviceglyph { width:52px;height:52px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;color:var(--site-primary); }
+.deviceglyph svg { width:27px;height:27px; }
+.devicetitle { font-weight:800; font-size:15px; }
+.stateword { font-size:12px; color:var(--muted); margin-top:5px; }
+.stateword strong { color:var(--site-on-background); }
+.switch { position:relative; width:62px;height:36px;flex:0 0 auto; }
+.switch input { opacity:0;width:0;height:0;position:absolute; }
+.slider { position:absolute;inset:0;border-radius:999px;background:light-dark(#CAD5CF,#42534B);cursor:pointer;transition:.2s; }
+.slider:before { content:"";position:absolute;width:28px;height:28px;left:4px;top:4px;border-radius:50%;background:#fff;box-shadow:0 2px 6px #0002;transition:.2s; }
+.switch input:checked + .slider { background:var(--good); }
+.switch input:checked + .slider:before { transform:translateX(26px); }
+.switch input:focus-visible + .slider { outline:3px solid #70B6A4;outline-offset:3px; }
+.actionrow { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px; }
+.btn { font:inherit;border:1px solid var(--line);border-radius:13px;padding:12px 14px;font-weight:750;font-size:13px;cursor:pointer;transition:transform .12s,opacity .12s; }
+.btn:active { transform:scale(.985); }
+.btn:disabled { opacity:.45;cursor:not-allowed; }
+.btn.primary { background:var(--site-primary);color:var(--site-on-primary);border-color:var(--site-primary); }
+.btn.secondary { background:var(--surface);color:var(--site-on-background); }
+.statusnote { display:flex;gap:10px;align-items:flex-start;background:light-dark(#FFF6E6,#352C1D);color:light-dark(#74501D,#EACB8E);border-radius:13px;padding:12px 13px;font-size:12px;line-height:1.5;margin-top:16px; }
+.statusnote svg { width:17px;height:17px;flex:0 0 auto;margin-top:1px; }
+.sectionlabel { color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:13px; }
+.metrics { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+.metric { padding:14px;border:1px solid var(--line);border-radius:15px; }
+.metriclabel { color:var(--muted);font-size:11px; }
+.metricvalue { font-weight:800;font-size:17px;letter-spacing:-.03em;margin-top:7px; }
+.metricvalue span { font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0; }
+.loglist { display:flex;flex-direction:column;gap:0; }
+.logitem { display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line); }
+.logitem:last-child { border-bottom:0;padding-bottom:0; }
+.logicon { width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--surface-soft);color:var(--muted);font-size:13px; }
+.logtitle { font-size:12px;font-weight:750; }
+.logdesc { font-size:11px;color:var(--muted);margin-top:4px; }
+.logtime { font-size:10px;color:var(--muted);white-space:nowrap; }
+.settings { margin-top:18px; }
+details summary { cursor:pointer; font-weight:750; font-size:13px; list-style:none; display:flex;justify-content:space-between;align-items:center; }
+details summary::-webkit-details-marker { display:none; }
+details summary:after { content:'＋';font-size:18px;color:var(--muted); }
+details[open] summary:after { content:'−'; }
+.formgrid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px; }
+.field { display:flex;flex-direction:column;gap:7px;min-width:0; }
+.field.full { grid-column:1/-1; }
+label { color:var(--muted);font-size:11px;font-weight:700; }
+input[type=text],input[type=number],input[type=password],select { width:100%;background:var(--surface-soft);border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--site-on-background);font:inherit;font-size:13px;min-width:0; }
+.hint { color:var(--muted);font-size:11px;line-height:1.5;margin:12px 0 0; }
+footer { color:var(--muted);font-size:11px;text-align:center;margin-top:22px;line-height:1.6; }
+.toast { position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:var(--site-on-background);color:var(--surface);padding:12px 16px;border-radius:12px;font-size:13px;box-shadow:0 8px 30px #0002;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 30px);z-index:5; }
+.toast.show { opacity:1;transform:translate(-50%,0); }
+@media(max-width:720px) { .topbar { padding:18px 18px; }.topright .topstatus { display:none; }.wrap { padding:24px 14px 34px; }.welcome { align-items:flex-start;flex-direction:column;gap:12px; }h1 { font-size:calc(27px * var(--site-heading-scale)); }.layout { grid-template-columns:1fr;gap:14px; }.card { padding:18px;border-radius:18px; }.mode { align-self:flex-start; }.device { padding:14px; }.formgrid { grid-template-columns:1fr; }.field.full { grid-column:auto; } }
+@media(prefers-reduced-motion:reduce) { *,*:before,*:after { transition:none!important;scroll-behavior:auto!important; } }
+</style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen pb-24 font-sans select-none relative">
-
-  <!-- ==================== BANNER PWA CÀI ĐẶT ==================== -->
-  <div id="pwa-install-banner" class="hidden bg-blue-600 text-white p-3 flex justify-between items-center shadow-md sticky top-0 z-50">
-    <div class="flex items-center gap-2">
-      <span class="text-2xl">📱</span>
-      <div>
-        <p class="text-sm font-bold">Cài đặt DyAuto</p>
-        <p class="text-[10px] text-blue-200">Ghim ra màn hình chính để dùng như App</p>
-      </div>
-    </div>
-    <div class="flex gap-2">
-      <button onclick="hidePwaBanner()" class="text-blue-200 hover:text-white px-2 py-1 text-xs">Để sau</button>
-      <button id="pwa-install-btn" class="bg-white text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold shadow">Cài đặt</button>
-    </div>
+<body>
+<div id="app">
+<header class="topbar">
+  <div class="brandrow">
+    <div class="brand"><div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C9.5 7 5 11 5 15a7 7 0 0 0 14 0c0-4-4.5-8-7-12Z"/><path d="M8.5 15.5c.2 1.7 1.5 2.8 3.2 3"/></svg></div><div><div class="kicker">Smart aquaculture</div>AquaAuto</div></div>
+    <div class="topright"><span class="pulse" id="top-dot"></span><span class="topstatus" id="top-status">Chưa kết nối MQTT</span></div>
   </div>
-
-  <!-- Header Cố Định -->
-  <header class="bg-emerald-700 text-white px-4 py-3.5 shadow sticky top-0 z-40 flex justify-between items-center">
-    <div class="flex items-center space-x-2">
-      <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center font-black text-emerald-200">D</div>
-      <div>
-        <h1 class="text-base font-bold leading-tight">DyAuto Controller</h1>
-        <p class="text-[11px] text-emerald-200">Mã trạm: <span id="header-gw-name" class="font-mono font-bold text-white">Đang tải...</span></p>
-      </div>
-    </div>
-    <div id="conn-pill" class="flex items-center space-x-1.5 bg-emerald-900/60 px-2.5 py-1 rounded-full text-xs border border-emerald-500/30">
-      <span id="conn-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-      <span id="conn-text" class="text-[11px] font-medium">Đang kết nối...</span>
-    </div>
-  </header>
-
-  <!-- Banner Cảnh Báo Khẩn Cấp (Mất điện bờ ao) -->
-  <div id="power-alert" class="hidden bg-rose-600 text-white p-3.5 shadow-lg sticky top-[60px] z-30 animate-bounce border-b border-rose-800">
-    <div class="max-w-md mx-auto flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <span class="text-xl">⚠️</span>
-        <div>
-          <p class="text-xs font-bold uppercase tracking-wider">Mất điện bờ ao!</p>
-          <p class="text-[10px] text-rose-100">Kiểm tra ngay nguồn điện lưới hoặc CB.</p>
+</header>
+<main class="wrap">
+  <div class="welcome"><div><div class="eyebrow">Bảng điều khiển</div><h1>Chào mừng trở lại.</h1><p class="sub">Theo dõi Gateway và gửi lệnh điều khiển từ một nơi.</p></div><div class="mode">MVP · <span id="mode-label">Chế độ mô phỏng</span></div></div>
+  <div class="layout">
+    <section class="card">
+      <div class="cardhead"><div class="gateway"><div class="gatewayicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 8h8v8H8zM2 9h2M2 15h2M20 9h2M20 15h2M9 2v2M15 2v2M9 20v2M15 20v2"/></svg></div><div><div class="gatewayname">Gateway GW_01</div><div class="smallmuted">Khu vực nuôi · Thiết bị thử nghiệm</div></div></div><span class="pill" id="mqtt-pill"><span class="dot"></span><span id="mqtt-pill-text">Ngoại tuyến</span></span></div>
+      <hr class="divider">
+      <div class="sectionlabel">Thiết bị điều khiển</div>
+      <div class="device"><div class="devicecopy"><div class="deviceglyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8M6.5 5.5a9 9 0 1 0 11 0"/><path d="M9 14h6M10 17h4"/></svg></div><div><div class="devicetitle">Thiết bị Node 1</div><div class="stateword">Trạng thái: <strong id="state-text">TẮT</strong></div></div></div><label class="switch" aria-label="Bật hoặc tắt thiết bị"><input id="power-switch" type="checkbox"><span class="slider"></span></label></div>
+      <div class="actionrow"><button class="btn primary" id="on-btn">Bật thiết bị</button><button class="btn secondary" id="off-btn">Tắt thiết bị</button></div>
+      <div class="statusnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7h.01"/></svg><div><strong>Thiết bị thử nghiệm:</strong> firmware hiện tại điều khiển LED tích hợp trên ESP32. Trạng thái này chưa xác nhận máy bơm hoặc thiết bị điện thực tế đang chạy.</div></div>
+      <div class="settings"><details id="settings-details"><summary>Cấu hình kết nối MQTT</summary>
+        <div class="formgrid">
+          <div class="field"><label for="broker">Broker WebSocket host</label><input id="broker" type="text" value="broker.emqx.io" autocomplete="off"></div>
+          <div class="field"><label for="port">WebSocket port</label><input id="port" type="number" value="8083" min="1" max="65535"></div>
+          <div class="field"><label for="path">WebSocket path</label><input id="path" type="text" value="/mqtt"></div>
+          <div class="field"><label for="clientid">Client ID</label><input id="clientid" type="text" value="AquaAuto-Web-01"></div>
+          <div class="field"><label for="gatewayid">Gateway ID</label><input id="gatewayid" type="text" value="GW_01"></div>
+          <div class="field"><label for="secret">Device secret (topic)</label><input id="secret" type="password" value="CHANGE_ME_UNIQUE_SECRET" autocomplete="off"></div>
+          <div class="field"><label for="scheme">Kết nối</label><select id="scheme"><option value="ws" selected>WS · thử nghiệm</option><option value="wss">WSS · TLS</option></select></div>
+          <div class="field"><label for="mode">Chế độ app</label><select id="mode"><option value="demo" selected>Mô phỏng UI</option><option value="mqtt">MQTT thật (cần thư viện/client)</option></select></div>
+          <div class="field full"><button class="btn primary" id="save-config">Lưu cấu hình trên phiên này</button></div>
         </div>
+        <p class="hint">Bản xem trước không mở kết nối mạng MQTT thật. Broker firmware hiện dùng TCP 1883; trình duyệt cần WebSocket listener được broker hỗ trợ. Không đưa thông tin bí mật sản xuất vào app web công khai.</p>
+      </details></div>
+    </section>
+    <aside class="card">
+      <div class="cardhead"><h2>Tình trạng Gateway</h2><span class="pill" id="gateway-pill"><span class="dot"></span><span id="gateway-pill-text">Chưa có dữ liệu</span></span></div>
+      <div class="metrics">
+        <div class="metric"><div class="metriclabel">Wi-Fi Gateway</div><div class="metricvalue" id="wifi-value">—</div></div>
+        <div class="metric"><div class="metriclabel">Tín hiệu Wi-Fi</div><div class="metricvalue" id="rssi-value">— <span>dBm</span></div></div>
+        <div class="metric"><div class="metriclabel">Nguồn thiết bị</div><div class="metricvalue" id="power-value">UNKNOWN</div></div>
+        <div class="metric"><div class="metriclabel">Lệnh gần nhất</div><div class="metricvalue" id="last-command">—</div></div>
       </div>
-      <button onclick="document.getElementById('power-alert').classList.add('hidden')" class="bg-white text-rose-700 text-xs font-bold px-2.5 py-1.5 rounded shadow">Đã xem</button>
-    </div>
+      <hr class="divider">
+      <div class="cardhead"><h2>Nhật ký hoạt động</h2><button class="btn secondary" id="clear-log" style="padding:7px 10px;font-size:11px">Xóa</button></div>
+      <div class="loglist" id="log-list" aria-live="polite"><div class="logitem"><div class="logicon">•</div><div><div class="logtitle">App đã sẵn sàng</div><div class="logdesc">Chưa gửi lệnh đến Gateway</div></div><div class="logtime">Bây giờ</div></div></div>
+    </aside>
   </div>
-
-  <main class="max-w-md mx-auto p-4">
-
-    <!-- ==================== TAB 1: BẢNG ĐIỀU KHIỂN ==================== -->
-    <section id="tab-dashboard" class="space-y-4">
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex justify-between items-center">
-        <div>
-          <span class="text-xs text-slate-400 font-medium block">Số trạm bờ ao</span>
-          <span class="text-lg font-bold text-slate-800"><span id="active-nodes-count">1</span> Trạm hoạt động</span>
-        </div>
-        <button onclick="switchTab('devices')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-2 rounded-xl border border-emerald-200 transition">
-          + Ghép Trạm
-        </button>
-      </div>
-
-      <div id="nodes-container" class="space-y-3">
-        <!-- Node Cards render động -->
-      </div>
-    </section>
-
-    <!-- ==================== TAB 2: LỊCH TRÌNH ==================== -->
-    <section id="tab-schedules" class="hidden space-y-4">
-      <div class="flex justify-between items-center">
-        <div>
-          <h2 class="text-base font-bold text-slate-900">Lịch Tự Động</h2>
-          <p class="text-[11px] text-slate-400">Tự động chạy ngầm dưới tủ</p>
-        </div>
-        <button onclick="alert('Tính năng thêm lịch sẽ mở form chọn giờ.')" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl shadow">
-          + Tạo lịch
-        </button>
-      </div>
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex justify-between items-center">
-        <div>
-           <div class="flex items-center space-x-1.5">
-              <span class="text-xs font-bold text-slate-800">22:00 → 04:30</span>
-              <span class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold">Ao 1</span>
-           </div>
-           <p class="text-[11px] text-slate-400 mt-1">Lặp: T2, T3, T4, T5, T6, T7, CN</p>
-        </div>
-        <input type="checkbox" checked class="w-4 h-4 accent-emerald-600 rounded">
-      </div>
-    </section>
-
-    <!-- ==================== TAB 3: CÀI ĐẶT ==================== -->
-    <section id="tab-devices" class="hidden space-y-4">
-      <!-- Cài đặt mã trạm -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
-        <h3 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">Thông tin Gateway</h3>
-        <div class="text-xs space-y-2">
-           <div class="flex justify-between"><span class="text-slate-500">Gateway ID:</span> <span id="settings-gw-id" class="font-mono font-bold">...</span></div>
-           <div class="flex justify-between"><span class="text-slate-500">Secret Key:</span> <span id="settings-key" class="font-mono font-bold text-emerald-600">***</span></div>
-        </div>
-      </div>
-      <!-- Nút ghép đôi Node mới -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
-        <div class="flex items-center space-x-2 border-b border-slate-100 pb-2">
-          <span class="text-xl">📡</span>
-          <div>
-            <h3 class="text-sm font-bold text-slate-900">Ghép Tủ Bờ Ao Mới</h3>
-            <p class="text-[11px] text-slate-400">Thêm cụm thiết bị vào mạng LoRa</p>
-          </div>
-        </div>
-        <button onclick="startPairing()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow transition">
-          Mở Quét Ghép Đôi (60s)
-        </button>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Bottom Navigation -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2 z-40">
-    <div class="max-w-md mx-auto flex justify-around">
-      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center text-emerald-700 font-bold">
-        <span class="text-xl">🎛️</span><span class="text-[10px] mt-0.5">Bảng Điều Khiển</span>
-      </button>
-      <button onclick="switchTab('schedules')" id="nav-schedules" class="flex flex-col items-center text-slate-400 font-medium">
-        <span class="text-xl">⏰</span><span class="text-[10px] mt-0.5">Lịch Trình</span>
-      </button>
-      <button onclick="switchTab('devices')" id="nav-devices" class="flex flex-col items-center text-slate-400 font-medium">
-        <span class="text-xl">⚙️</span><span class="text-[10px] mt-0.5">Cài Đặt</span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- Toast (Thông báo nổi) -->
-  <div id="toast" class="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-xl shadow-xl text-xs opacity-0 transition-opacity z-50 text-center max-w-[85%] font-medium pointer-events-none"></div>
-
-  <script>
-    // 1. TRÍCH XUẤT QR & BẢO MẬT KHÔNG TÀI KHOẢN[cite: 4]
-    const urlParams = new URLSearchParams(window.location.search);
-    const gatewayId = urlParams.get('id') || localStorage.getItem('aq_gw_id') || 'GW_01';
-    const secretKey = urlParams.get('key') || localStorage.getItem('aq_secret') || 'K87B';
-    
-    // Lưu vĩnh viễn[cite: 4]
-    localStorage.setItem('aq_gw_id', gatewayId);
-    localStorage.setItem('aq_secret', secretKey);
-    
-    document.getElementById('header-gw-name').innerText = gatewayId;
-    document.getElementById('settings-gw-id').innerText = gatewayId;
-
-    let nodesList = [
-      { id: 1, name: "Quạt Sục Khí - Ao 1", state: "OFF", rssi: -75, power: "OK" }
-    ];
-    
-    let client = null;
-    let commandLock = false; // Phục vụ Debounce[cite: 4]
-
-    // --- TÍNH NĂNG PWA (Cài đặt ra màn hình) ---
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      document.getElementById('pwa-install-banner').classList.remove('hidden');
-    });
-
-    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') hidePwaBanner();
-        deferredPrompt = null;
-      }
-    });
-
-    function hidePwaBanner() {
-      document.getElementById('pwa-install-banner').classList.add('hidden');
+  <footer>AquaAuto MVP · Giao diện thử nghiệm · Chưa phải hệ thống điều khiển thiết bị điện thực tế.</footer>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let isOn = false;
+  let logCount = 0;
+  let toastTimer;
+  const configFields = ['broker','port','path','clientid','gatewayid','secret','scheme','mode'];
+  function nowTime() { return new Intl.DateTimeFormat('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date()); }
+  function toast(message) { $('toast').textContent = message; $('toast').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 2600); }
+  function addLog(title, desc, icon='↗') {
+    const list = $('log-list');
+    if (logCount === 0) list.replaceChildren();
+    const item = document.createElement('div'); item.className='logitem';
+    const ico = document.createElement('div'); ico.className='logicon'; ico.textContent=icon;
+    const copy = document.createElement('div');
+    const t = document.createElement('div'); t.className='logtitle'; t.textContent=title;
+    const d = document.createElement('div'); d.className='logdesc'; d.textContent=desc;
+    copy.append(t,d); const time = document.createElement('div'); time.className='logtime'; time.textContent=nowTime();
+    item.append(ico,copy,time); list.prepend(item); logCount++;
+    while(list.children.length>6) list.lastElementChild.remove();
+  }
+  function setState(on, fromCommand=false) {
+    isOn=on; $('power-switch').checked=on; $('state-text').textContent=on?'BẬT':'TẮT';
+    $('last-command').textContent=on?'ON':'OFF';
+    if(fromCommand) {
+      addLog('Đã mô phỏng lệnh '+(on?'ON':'OFF'),'UI đổi trạng thái giả lập · Chưa gửi MQTT thật',on?'↗':'↘');
+      toast('Đã mô phỏng lệnh '+(on?'BẬT':'TẮT')+' · chưa gửi tới Gateway');
     }
-
-    // --- TIỆN ÍCH UI ---
-    function showToast(msg) {
-      const toast = document.getElementById('toast');
-      toast.innerText = msg;
-      toast.classList.remove('opacity-0');
-      setTimeout(() => toast.classList.add('opacity-0'), 3000);
-    }
-
-    function switchTab(tab) {
-      ['dashboard', 'schedules', 'devices'].forEach(t => {
-        document.getElementById(`tab-${t}`).classList.add('hidden');
-        document.getElementById(`nav-${t}`).classList.replace('text-emerald-700', 'text-slate-400');
-        document.getElementById(`nav-${t}`).classList.remove('font-bold');
-      });
-      document.getElementById(`tab-${tab}`).classList.remove('hidden');
-      document.getElementById(`nav-${tab}`).classList.replace('text-slate-400', 'text-emerald-700');
-      document.getElementById(`nav-${tab}`).classList.add('font-bold');
-    }
-
-    // --- HIỂN THỊ DANH SÁCH NODE ---
-    function renderNodes() {
-      const container = document.getElementById('nodes-container');
-      container.innerHTML = '';
-      nodesList.forEach(node => {
-        const isOn = node.state === "ON";
-        container.innerHTML += `
-          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
-            <div class="flex justify-between items-start">
-              <div>
-                <h3 class="text-sm font-bold text-slate-900">${node.name}</h3>
-                <p class="text-[11px] text-slate-400 mt-0.5">Sóng LoRa: <b class="${node.rssi >= -90 ? 'text-emerald-600' : 'text-amber-600'}">${node.rssi}dBm</b></p>
-              </div>
-              <span class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-mono">#${node.id}</span>
-            </div>
-            
-            <div class="flex items-center justify-between pt-2 border-t border-slate-50">
-              <div>
-                <span class="text-[11px] font-bold ${isOn ? 'text-emerald-600' : 'text-slate-400'}">${isOn ? 'Đang Chạy' : 'Đang Tắt'}</span>
-                <span id="subtitle-node-${node.id}" class="block text-[9px] text-slate-400">Nhấn để đổi trạng thái</span>
-              </div>
-              
-              <!-- Toggle Nút bấm: "State of Truth" -->
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input id="toggle-node-${node.id}" type="checkbox" ${isOn ? 'checked' : ''} onchange="sendToggleCommand(${node.id}, this.checked)" class="sr-only peer">
-                <div class="w-14 h-8 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600 shadow-inner"></div>
-              </label>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    // --- GIAO TIẾP MQTT & LOGIC CỐT LÕI ---
-    function initMQTT() {
-      // 2. Giao thức MQTT qua WebSockets (port 8084)[cite: 4]
-      const url = `wss://broker.emqx.io:8084/mqtt`;
-      const clientId = 'dyauto_app_' + Math.random().toString(16).substr(2, 8);
-      client = mqtt.connect(url, { clientId, clean: true, reconnectPeriod: 3000 });
-
-      client.on('connect', () => {
-        document.getElementById('conn-dot').className = "w-2 h-2 rounded-full bg-emerald-400";
-        document.getElementById('conn-text').innerText = "Online";
-        
-        // Theo chuẩn bảo mật[cite: 4]
-        client.subscribe(`dyauto/${gatewayId}_${secretKey}/status`);
-      });
-
-      client.on('message', (topic, message) => {
-        try {
-          const payload = JSON.parse(message.toString());
-          if (topic.endsWith('/status')) handleStatusUpdate(payload);
-        } catch (e) {}
-      });
-      
-      client.on('offline', () => {
-         document.getElementById('conn-dot').className = "w-2 h-2 rounded-full bg-rose-500";
-         document.getElementById('conn-text').innerText = "Mất kết nối";
-      });
-    }
-
-    // 3. Cơ chế State of Truth & Debounce[cite: 4]
-    function sendToggleCommand(id, wantedState) {
-      const toggle = document.getElementById(`toggle-node-${id}`);
-      const subtitle = document.getElementById(`subtitle-node-${id}`);
-      
-      // Khóa dội (Debounce): Nếu đang gửi lệnh, chặn thao tác
-      if (commandLock) {
-         toggle.checked = !wantedState; // Hoàn lại trạng thái UI[cite: 4]
-         showToast("Vui lòng đợi 2 giây giữa các lần nhấn!");
-         return;
-      }
-
-      // Ép giao diện trở lại trạng thái cũ (State of Truth) cho đến khi ESP32 báo cáo[cite: 4]
-      toggle.checked = !wantedState; 
-      
-      // Bật cờ khóa nút trong 2 giây[cite: 4]
-      commandLock = true;
-      subtitle.innerText = "Đang truyền lệnh ra ao...";
-      subtitle.classList.add("text-amber-500", "font-bold");
-
-      // Gửi lệnh xuống mạch[cite: 4]
-      const payload = JSON.stringify({ node: id, cmd: wantedState ? "ON" : "OFF" });
-      client.publish(`dyauto/${gatewayId}_${secretKey}/command`, payload, { qos: 1 });
-
-      setTimeout(() => { 
-          commandLock = false; 
-          subtitle.innerText = "Nhấn để đổi trạng thái";
-          subtitle.classList.remove("text-amber-500", "font-bold");
-      }, 2000); 
-    }
-
-    function handleStatusUpdate(data) {
-      const node = nodesList.find(n => n.id === data.node);
-      if (node) {
-        // Cập nhật trạng thái thực tế
-        if (data.state) node.state = data.state;
-        if (data.rssi) node.rssi = data.rssi;
-        
-        // Cảnh báo mất điện[cite: 4]
-        if (data.power) {
-          node.power = data.power;
-          if (data.power === "LOST") {
-             document.getElementById('power-alert').classList.remove('hidden');
-          }
-        }
-        
-        // Render lại UI bằng thông số thực tế (State of truth)
-        renderNodes();
-      }
-    }
-
-    function startPairing() {
-        showToast("Đang mở mạng quét tủ bờ ao trong 60 giây...");
-        const payload = JSON.stringify({ type: "START_PAIRING", timeout: 60 });
-        client.publish(`dyauto/${gatewayId}_${secretKey}/command`, payload, { qos: 1 });
-    }
-
-    // Khởi chạy
-    window.onload = () => {
-      renderNodes();
-      initMQTT();
-    };
-  </script>
+  }
+  $('on-btn').addEventListener('click',()=>setState(true,true));
+  $('off-btn').addEventListener('click',()=>setState(false,true));
+  $('power-switch').addEventListener('change',e=>setState(e.target.checked,true));
+  $('save-config').addEventListener('click',()=>{
+    const mode=$('mode').value;
+    $('mode-label').textContent=mode==='demo'?'Chế độ mô phỏng':'MQTT thật';
+    addLog('Cấu hình đã áp dụng','Chỉ lưu trong phiên xem trước','⚙');
+    toast('Đã áp dụng cấu hình cho phiên này');
+  });
+  $('mode').addEventListener('change',e=>{
+    if(e.target.value==='mqtt') toast('Bản preview chưa kết nối MQTT thật. Cần tích hợp client và WebSocket broker.');
+    $('mode-label').textContent=e.target.value==='demo'?'Chế độ mô phỏng':'MQTT thật';
+  });
+  $('clear-log').addEventListener('click',()=>{logCount=0;$('log-list').replaceChildren();addLog('Nhật ký đã xóa','Chờ thao tác tiếp theo','•');toast('Đã xóa nhật ký');});
+})();
+</script>
 </body>
 </html>
