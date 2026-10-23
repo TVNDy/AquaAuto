@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0c5d54">
-<title>AquaAuto — User App MVP</title>
+<title>AquaAuto — User App MQTT</title>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <style>
 :root {
   --site-primary: #0C5D54;
@@ -133,16 +134,16 @@ footer { color:var(--muted);font-size:11px;text-align:center;margin-top:22px;lin
       <div class="settings"><details id="settings-details"><summary>Cấu hình kết nối MQTT</summary>
         <div class="formgrid">
           <div class="field"><label for="broker">Broker WebSocket host</label><input id="broker" type="text" value="broker.emqx.io" autocomplete="off"></div>
-          <div class="field"><label for="port">WebSocket port</label><input id="port" type="number" value="8083" min="1" max="65535"></div>
+          <div class="field"><label for="port">WebSocket port</label><input id="port" type="number" value="8084" min="1" max="65535"></div>
           <div class="field"><label for="path">WebSocket path</label><input id="path" type="text" value="/mqtt"></div>
           <div class="field"><label for="clientid">Client ID</label><input id="clientid" type="text" value="AquaAuto-Web-01"></div>
           <div class="field"><label for="gatewayid">Gateway ID</label><input id="gatewayid" type="text" value="GW_01"></div>
           <div class="field"><label for="secret">Device secret (topic)</label><input id="secret" type="password" value="CHANGE_ME_UNIQUE_SECRET" autocomplete="off"></div>
-          <div class="field"><label for="scheme">Kết nối</label><select id="scheme"><option value="ws" selected>WS · thử nghiệm</option><option value="wss">WSS · TLS</option></select></div>
-          <div class="field"><label for="mode">Chế độ app</label><select id="mode"><option value="demo" selected>Mô phỏng UI</option><option value="mqtt">MQTT thật (cần thư viện/client)</option></select></div>
+          <div class="field"><label for="scheme">Kết nối</label><select id="scheme"><option value="ws">WS · không mã hóa</option><option value="wss" selected>WSS · TLS</option></select></div>
+          <div class="field"><label for="mode">Chế độ app</label><select id="mode"><option value="demo">Mô phỏng UI</option><option value="mqtt" selected>MQTT thật</option></select></div>
           <div class="field full"><button class="btn primary" id="save-config">Lưu cấu hình trên phiên này</button></div>
         </div>
-        <p class="hint">Bản xem trước không mở kết nối mạng MQTT thật. Broker firmware hiện dùng TCP 1883; trình duyệt cần WebSocket listener được broker hỗ trợ. Không đưa thông tin bí mật sản xuất vào app web công khai.</p>
+        <p class="hint">Kết nối trình duyệt dùng WebSocket (WSS 8084, đường dẫn /mqtt), còn Gateway dùng MQTT TCP 1883. Hãy thay CHANGE_ME_UNIQUE_SECRET bằng chuỗi riêng và dùng cùng chuỗi trong firmware + app. Broker công cộng không bảo vệ topic bằng “secret”; chỉ thử với LED tích hợp, không dùng điều khiển tải thật.</p>
       </details></div>
     </section>
     <aside class="card">
@@ -165,12 +166,10 @@ footer { color:var(--muted);font-size:11px;text-align:center;margin-top:22px;lin
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  let isOn = false;
-  let logCount = 0;
-  let toastTimer;
+  let client = null, isOn = false, logCount = 0, toastTimer, pendingCommand = null;
   const configFields = ['broker','port','path','clientid','gatewayid','secret','scheme','mode'];
   function nowTime() { return new Intl.DateTimeFormat('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date()); }
-  function toast(message) { $('toast').textContent = message; $('toast').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 2600); }
+  function toast(message) { $('toast').textContent = message; $('toast').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 3200); }
   function addLog(title, desc, icon='↗') {
     const list = $('log-list');
     if (logCount === 0) list.replaceChildren();
@@ -181,30 +180,87 @@ footer { color:var(--muted);font-size:11px;text-align:center;margin-top:22px;lin
     const d = document.createElement('div'); d.className='logdesc'; d.textContent=desc;
     copy.append(t,d); const time = document.createElement('div'); time.className='logtime'; time.textContent=nowTime();
     item.append(ico,copy,time); list.prepend(item); logCount++;
-    while(list.children.length>6) list.lastElementChild.remove();
+    while(list.children.length>8) list.lastElementChild.remove();
   }
-  function setState(on, fromCommand=false) {
+  function setPill(id, text, online) {
+    const el=$(id); if(!el) return;
+    el.classList.toggle('online', !!online); el.classList.toggle('offline', !online);
+    const span=el.querySelector('span:last-child'); if(span) span.textContent=text;
+  }
+  function setState(on, source='status') {
     isOn=on; $('power-switch').checked=on; $('state-text').textContent=on?'BẬT':'TẮT';
-    $('last-command').textContent=on?'ON':'OFF';
-    if(fromCommand) {
-      addLog('Đã mô phỏng lệnh '+(on?'ON':'OFF'),'UI đổi trạng thái giả lập · Chưa gửi MQTT thật',on?'↗':'↘');
-      toast('Đã mô phỏng lệnh '+(on?'BẬT':'TẮT')+' · chưa gửi tới Gateway');
-    }
+    if(source==='status') $('last-command').textContent=on?'ON':'OFF';
   }
-  $('on-btn').addEventListener('click',()=>setState(true,true));
-  $('off-btn').addEventListener('click',()=>setState(false,true));
-  $('power-switch').addEventListener('change',e=>setState(e.target.checked,true));
-  $('save-config').addEventListener('click',()=>{
-    const mode=$('mode').value;
-    $('mode-label').textContent=mode==='demo'?'Chế độ mô phỏng':'MQTT thật';
-    addLog('Cấu hình đã áp dụng','Chỉ lưu trong phiên xem trước','⚙');
-    toast('Đã áp dụng cấu hình cho phiên này');
-  });
+  function topicRoot() { return `dyauto/${$('gatewayid').value.trim()}_${$('secret').value.trim()}`; }
+  function connectMqtt() {
+    if(typeof window.mqtt === 'undefined') { toast('Không tải được MQTT.js. Kiểm tra Internet hoặc CDN.'); addLog('Lỗi thư viện','Không tìm thấy MQTT.js','!'); return; }
+    const host=$('broker').value.trim(), port=$('port').value.trim(), path=$('path').value.trim() || '/mqtt';
+    const scheme=$('scheme').value, gateway=$('gatewayid').value.trim(), secret=$('secret').value.trim();
+    if(!host || !port || !gateway || !secret || secret==='CHANGE_ME_UNIQUE_SECRET') {
+      toast('Hãy nhập Gateway ID và đổi secret mặc định thành chuỗi riêng khớp firmware.'); $('settings-details').open=true; return;
+    }
+    disconnectMqtt(false);
+    const url=`${scheme}://${host}:${port}${path.startsWith('/')?path:'/'+path}`;
+    const clientId=($('clientid').value.trim() || 'AquaAuto-Web')+'-'+Math.random().toString(16).slice(2,10);
+    addLog('Đang kết nối MQTT',url,'↗');
+    $('top-status').textContent='Đang kết nối MQTT…'; setPill('mqtt-pill','Đang kết nối',false);
+    try {
+      client=window.mqtt.connect(url,{clientId,clean:true,connectTimeout:10000,keepalive:30,reconnectPeriod:3000,protocolVersion:4});
+      client.on('connect',()=>{
+        $('top-status').textContent='Đã kết nối MQTT'; setPill('mqtt-pill','Đã kết nối',true);
+        addLog('MQTT đã kết nối','Đã kết nối tới broker; đang đăng ký topic status','✓');
+        client.subscribe(topicRoot()+'/status',{qos:1},err=>{
+          if(err){addLog('Lỗi subscribe',err.message,'!');toast('Không đăng ký được topic status');}
+          else addLog('Đã đăng ký status',topicRoot()+'/status','↓');
+        });
+      });
+      client.on('message',(topic,message)=>{
+        let data; try { data=JSON.parse(message.toString()); } catch(e) { addLog('Payload status không hợp lệ',message.toString(),'!'); return; }
+        if(topic!==topicRoot()+'/status') return;
+        if(data.gateway && data.gateway!==gateway) return;
+        if(Number(data.node)!==1) return;
+        setPill('gateway-pill','Có dữ liệu',true);
+        $('wifi-value').textContent=data.wifi ?? '—';
+        $('rssi-value').innerHTML=(data.rssi ?? '—')+' <span>dBm</span>';
+        $('power-value').textContent=data.power ?? 'UNKNOWN';
+        if(data.state==='ON' || data.state==='OFF') {
+          setState(data.state==='ON');
+          if(pendingCommand && pendingCommand===data.state) { addLog('Gateway xác nhận '+data.state,'Status đã phản hồi từ Gateway','✓'); toast('Gateway đã phản hồi '+data.state); pendingCommand=null; }
+          else addLog('Nhận trạng thái '+data.state,`Wi-Fi: ${data.wifi ?? '—'} · RSSI: ${data.rssi ?? '—'} dBm`,'↓');
+        } else addLog('Nhận status',message.toString(),'↓');
+      });
+      client.on('reconnect',()=>{ $('top-status').textContent='Đang kết nối lại…'; setPill('mqtt-pill','Kết nối lại',false); });
+      client.on('offline',()=>{ $('top-status').textContent='MQTT ngoại tuyến'; setPill('mqtt-pill','Ngoại tuyến',false); addLog('MQTT ngoại tuyến','Client mất kết nối tới broker','!'); });
+      client.on('error',err=>{ addLog('Lỗi MQTT',err.message || String(err),'!'); });
+      client.on('close',()=>{ if(client) { $('top-status').textContent='MQTT đã ngắt'; setPill('mqtt-pill','Ngoại tuyến',false); } });
+    } catch(err) { addLog('Không thể kết nối',err.message || String(err),'!'); toast('Không thể khởi tạo kết nối MQTT'); }
+  }
+  function disconnectMqtt(log=true) {
+    if(client) { const old=client; client=null; try { old.end(true); } catch(e) {} }
+    $('top-status').textContent='Chưa kết nối MQTT'; setPill('mqtt-pill','Ngoại tuyến',false);
+    if(log) addLog('Đã ngắt MQTT','Client đã ngắt kết nối','↘');
+  }
+  function sendCommand(cmd) {
+    if($('mode').value==='demo') { setState(cmd==='ON','demo'); addLog('Đã mô phỏng lệnh '+cmd,'Chưa gửi MQTT thật',cmd==='ON'?'↗':'↘'); toast('Mô phỏng בלבד — chưa gửi Gateway'); return; }
+    if(!client || !client.connected) { toast('Chưa kết nối MQTT. Nhấn “Kết nối MQTT” trước.'); return; }
+    const topic=topicRoot()+'/command', payload=JSON.stringify({node:1,cmd});
+    pendingCommand=cmd;
+    client.publish(topic,payload,{qos:1,retain:false},err=>{
+      if(err) { pendingCommand=null; addLog('Gửi lệnh thất bại',err.message,'!'); toast('Không gửi được lệnh'); }
+      else { $('last-command').textContent=cmd+' · chờ phản hồi'; addLog('Đã gửi lệnh '+cmd,topic+' · '+payload,'↑'); toast('Đã gửi '+cmd+'; đang chờ status từ Gateway'); }
+    });
+  }
+  $('on-btn').addEventListener('click',()=>sendCommand('ON'));
+  $('off-btn').addEventListener('click',()=>sendCommand('OFF'));
+  $('power-switch').addEventListener('change',e=>sendCommand(e.target.checked?'ON':'OFF'));
+  $('save-config').textContent='Kết nối MQTT';
+  $('save-config').addEventListener('click',()=>connectMqtt());
   $('mode').addEventListener('change',e=>{
-    if(e.target.value==='mqtt') toast('Bản preview chưa kết nối MQTT thật. Cần tích hợp client và WebSocket broker.');
     $('mode-label').textContent=e.target.value==='demo'?'Chế độ mô phỏng':'MQTT thật';
+    if(e.target.value==='demo') toast('Chế độ mô phỏng: lệnh không gửi lên Gateway');
   });
   $('clear-log').addEventListener('click',()=>{logCount=0;$('log-list').replaceChildren();addLog('Nhật ký đã xóa','Chờ thao tác tiếp theo','•');toast('Đã xóa nhật ký');});
+  window.addEventListener('beforeunload',()=>{if(client) client.end(true);});
 })();
 </script>
 </body>
