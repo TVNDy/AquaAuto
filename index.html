@@ -1,217 +1,169 @@
 
-Gemini
-
-Cuộc trò chuyện mới
-Thư viện
-Đã lên lịch
-Sinh viên
-
-Hiện thêm
-Sổ ghi chú mới
-AquaAuto
-Nhận Biết Dấu Hiệu Não Mô Cầu
-Khởi đầu hội thoại trống
-Thay bình hồng cắm tulip
-Vibe Coding Là Gì?
-Viết Mô Tả Kỹ Thuật Camera
-Khắc Phục Lỗi Linetype Scale Trong Layout
-Phân loại các loại tủ điện
-Tạo Ảnh Tem Hikvision
-Tra Cứu Tọa Độ Địa Điểm
-Nguồn gốc chữ Hỷ màu đỏ
-Hướng dẫn lập phụ lục tính toán camera và âm thanh
-Tiết diện sợi lõi cáp Cat6 UTP
-Quy định PCCC cho cửa thoát hiểm
-Hướng dẫn học bằng lái ô tô điện
-Quy định chỗ ngồi concert ATVNCG
-Thuyết minh hệ thống kích sóng di động
-Ăn được bí ngô Halloween không?
-Lợi ích sức khỏe của cùi trắng cam
-Kiểm tra cổng SFP thiết bị mạng
-Dự toán hệ thống âm thanh kho thực phẩm
-Tổng quan về gen Thalassemia
-Chỉnh sửa thông tin thẻ an toàn lao động
-Lại mắc lỗi cũ
-Tác dụng phụ thuốc tránh thai khẩn cấp
-Vị trí Khu đô thị Phú Long
-Tính toán dây loa hệ 100V
-Trò chuyện với Gemini
-Đây là fw (AquaAuto_Gateway_MQTT_hoan_chinh.ino) và web app (index.html) đang phát triển đến hiện tại. Đọc và phân tích quy trình hiện tại, tìm ra điểm chưa hợp lý cần cải thiện. theo t nghĩ quy trình kết nối giwuax gateway và app đã tương đối ổn, chỉ có giao diện thiết kế chưa ổn
-
-Quy trình hiện tại giữa Gateway và Web App đang hoạt động được về mặt truyền thông MQTT, nhưng lại đi ngược hoàn toàn với triết lý "1 chạm, không cấu hình phức tạp" dành cho nông dân. Giao diện Web App đang mang dáng dấp của một trang kiểm thử kỹ thuật (Dev Tool) hơn là một ứng dụng thương mại chuẩn công nghiệp.   
-Không xác định
-+ 1
-
-Điểm bất hợp lý trong Quy trình kết nối (Logic Flow)
-
-Lộ thông số kỹ thuật ra người dùng cuối: File index.html đang hiển thị và yêu cầu người dùng cấu hình Broker, Port, WebSocket path, Client ID, và Secret Key. Người nông dân không thể hiểu và không nên thấy các thông số này. Giao diện phải tự động bóc tách Gateway ID và Secret Key từ URL (thông qua mã QR quét ban đầu) và tự động kết nối ngầm.   
-HTML
-+ 1
-
-Thiết kế "chết" 1 Node: Code HTML đang hardcode trực tiếp "Thiết bị Node 1". Một hệ thống thực tế cần cấu trúc mảng động (Array) để quản lý danh sách nhiều trạm bờ ao khác nhau, cho phép hiển thị và điều khiển độc lập.   
-HTML
-
-Cơ chế "State of Truth" giả lập: Nút gạt (switch) trong file hiện tại sử dụng CSS thuần (:checked + .slider), nghĩa là nó tự động chuyển sang màu xanh ngay khi người dùng chạm vào. Điều này vi phạm nguyên tắc an toàn: công tắc chỉ được phép đổi màu khi nhận được gói tin status xác nhận từ ESP32 trả về.   
-HTML
-+ 1
-
-Điểm yếu trong Thiết kế Giao diện (UI/UX)
-
-Thiếu cấu trúc phân luồng (Tab Navigation): Ứng dụng đang nhồi nhét bảng điều khiển, thông số Gateway, nhật ký hoạt động và cài đặt MQTT vào một trang cuộn duy nhất. Các ứng dụng chuyên nghiệp (Tuya, eWeLink) luôn chia làm 3 Tab rõ ràng: Bảng điều khiển (Dashboard), Lịch trình (Schedules), và Cài đặt (Settings).   
-HTML
-+ 1
-
-Thiếu tính năng lõi của tự động hóa: Hoàn toàn vắng bóng giao diện hẹn giờ chạy tự động, đếm ngược, hoặc quản lý lịch trình theo ngày trong tuần.   
-MD
-
-Trải nghiệm thông báo (Toast/Log) gây nhiễu: Phần "Nhật ký hoạt động" chiếm quá nhiều diện tích và hiển thị các thông tin kỹ thuật (như payload JSON, subscribe topic) không mang lại giá trị thực tiễn cho người nông dân.   
-HTML
-
-Giải pháp Cải thiện Trọng tâm
-
-Bảo toàn Firmware Captive Portal: Giữ nguyên quy trình cấp Wi-Fi bằng mạng nội bộ DyAuto_Config trên ESP32. Do rào cản bảo mật CORS, Web App chạy trên HTTPS không thể truyền mật khẩu Wi-Fi thẳng xuống IP nội bộ của mạch, nên việc cấp mạng phải tách rời hoàn toàn khỏi Web App điều khiển.   
-Không xác định
-
-Đập đi xây lại User App: Loại bỏ hoàn toàn khối details chứa cấu hình MQTT trong index.html. Xây dựng lại giao diện 3 Tab, áp dụng thanh điều hướng dưới cùng (Bottom Navigation). Mọi thông số kết nối sẽ được ẩn dưới nền, tự động trích xuất từ URL (ví dụ: ?id=GW_01&key=143) và lưu vào localStorage.   
-HTML
-+ 1
-
-Khóa công tắc UI (Debounce UI): Cập nhật CSS và JS để khi bấm, nút sẽ hiện trạng thái "Đang chờ tải" và chỉ gạt sang màu xanh khi biến data.state từ topic status xác nhận là ON.
-
-t thấy phần kết nối wifi của fw này khá ok r, m từ đó viết lại fw và web đi
-
-Chào bạn, dựa trên những phân tích về quy trình hiện tại và triết lý "1 chạm, không cấu hình phức tạp" dành cho nhà nông, mình đã viết lại hoàn chỉnh cả hai phần: Firmware cho ESP32 và Web App (PWA).   
-MD
-
-Mình đã tách biệt rõ ràng 2 luồng: Firmware chỉ lo việc cấp mạng và duy trì kết nối phần cứng; còn Web App sẽ đảm nhận toàn bộ phần giao diện điều khiển và tự động đồng bộ ID/Key mà không để lộ thông số kỹ thuật cho người dùng.
-
-Dưới đây là 2 tệp đã được tạo ra:
-Biểu tượng CPP
-AquaAuto_Gateway_v2
- CPP 
- (Đã đổi đuôi thành .cpp để hệ thống hỗ trợ tải xuống, bạn có thể đổi lại thành .ino khi nạp qua Arduino IDE).
-Biểu tượng HTML
-AquaAuto_WebApp_v2
- HTML 
-
-1. Cải tiến trong Firmware (AquaAuto_Gateway_v2)
-Captive Portal mượt mà hơn: Luồng quét Wi-Fi được chuyển sang dạng bất đồng bộ (Async), giúp giao diện phản hồi nhanh và không bị treo.   
-HTML
-
-Bỏ Reboot không cần thiết: Mạch không còn tự động khởi động lại mỗi khi cấu hình xong Wi-Fi, giúp quá trình chuyển từ Offline sang Online trơn tru hơn.
-
-Tự động khôi phục: Nếu mất mạng, hệ thống tự động thử kết nối lại hoặc phát sóng cấu hình DyAuto_Config mà không xóa cấu hình cũ trong Flash.
-
-Đồng bộ MQTT: Trả về gói tin JSON chuẩn xác (status) để đồng bộ với Web App.
-
-2. Cải tiến trong Web App (AquaAuto_WebApp_v2)
-Giao diện 3 Tab PWA: Đã thiết kế lại theo chuẩn ứng dụng thực thụ với 3 tab: Bảng điều khiển, Lịch trình, và Cài đặt.
-
-Ẩn hoàn toàn kỹ thuật: Bỏ hẳn Form nhập thông số MQTT. Ứng dụng tự động đọc tham số từ đường link (ví dụ: ?id=GW_01&key=143) và lưu vào localStorage. Nông dân chỉ cần quét mã QR dán trên thiết bị 1 lần duy nhất.
-
-Nguyên tắc "State of Truth": Công tắc trên Web App tuyệt đối không tự đổi màu ngay khi bấm. Nó sẽ hiển thị trạng thái "Đang tải" và chỉ gạt sang màu xanh khi ESP32 thực sự phản hồi lệnh qua máy chủ MQTT.   
-MD
-+ 1
-
-Chống dội (Debounce): Khóa nút tạm thời khoảng 2 giây sau khi bấm để tránh nông dân bấm liên tục gây hỏng khởi động từ ngoài ao.   
-MD
-
-Bạn có thể tải 2 tệp trên về, nạp mã vào ESP32 và mở tệp HTML trên trình duyệt để trải nghiệm luồng kết nối hoàn chỉnh nhé!
-
-
-
-
-
-Gemini là một AI và có thể mắc sai sót.
-
-Organizing Vietnamese software updates
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#065f46">
   <title>AquaAuto - Bảng Điều Khiển</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <link rel="manifest" href="manifest.json">
   <style>
-    /* CSS cho Switch */
-    .switch-bg { transition: background-color 0.3s; }
-    .switch-knob { transition: transform 0.3s; }
-    .active .switch-bg { background-color: #10b981; }
-    .active .switch-knob { transform: translateX(1.5rem); }
-    .loading .switch-bg { opacity: 0.6; cursor: wait; }
+    /* Custom Switch Toggle */
+    .toggle-checkbox:checked { right: 0; border-color: #10b981; }
+    .toggle-checkbox:checked + .toggle-label { background-color: #10b981; }
+    .toggle-checkbox { right: 0; z-index: 1; border-color: #e2e8f0; transition: all 0.3s; }
+    .toggle-label { background-color: #cbd5e1; transition: all 0.3s; }
+    .loading-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col overflow-hidden select-none">
 
   <!-- Header -->
-  <header class="bg-emerald-700 text-white px-4 py-3 flex justify-between items-center shrink-0 shadow-md z-10">
-    <div>
-      <h1 class="font-bold text-lg leading-tight">AquaAuto</h1>
-      <p class="text-xs text-emerald-200" id="gateway-label">Trạm: Đang tải...</p>
+  <header class="bg-emerald-800 text-white px-5 py-4 flex justify-between items-center shadow-md z-10 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center font-black text-xl shadow-inner">A</div>
+      <div>
+        <h1 class="font-bold text-xl leading-tight tracking-tight">AquaAuto</h1>
+        <p class="text-xs text-emerald-200 mt-0.5">Trạm: <span id="gateway-label" class="font-mono">...</span></p>
+      </div>
     </div>
-    <div id="conn-badge" class="flex items-center space-x-1 bg-emerald-900 px-2 py-1 rounded text-xs border border-emerald-500">
-      <div id="conn-dot" class="w-2 h-2 rounded-full bg-yellow-400"></div>
-      <span id="conn-text">Đang kết nối</span>
+    <div id="conn-badge" class="flex items-center gap-1.5 bg-emerald-900/60 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-600/50 transition-colors">
+      <div id="conn-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+      <span id="conn-text">Kết nối...</span>
     </div>
   </header>
 
+  <!-- Alert Banner -->
+  <div id="power-alert" class="hidden bg-red-600 text-white px-5 py-3 shadow-lg z-20 flex justify-between items-center animate-bounce">
+    <div class="flex items-center gap-3">
+      <svg class="w-6 h-6 text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+      <div>
+        <p class="font-bold text-sm uppercase tracking-wide">Mất nguồn 220V!</p>
+        <p class="text-xs text-red-200">Kiểm tra ngay điện lưới bờ ao.</p>
+      </div>
+    </div>
+    <button onclick="document.getElementById('power-alert').classList.add('hidden')" class="text-xs bg-white text-red-700 font-bold px-3 py-1.5 rounded-lg shadow-sm">Đóng</button>
+  </div>
+
   <!-- Main Content -->
-  <main class="flex-1 overflow-y-auto p-4 pb-20">
-    <!-- TAB: DASHBOARD -->
-    <div id="tab-dashboard" class="space-y-4">
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
-        <div>
-          <h2 class="font-bold text-slate-800 text-base">Node 1 (Ao chính)</h2>
-          <p class="text-xs text-slate-500 mt-1" id="wifi-rssi">Sóng LoRa: --</p>
+  <main class="flex-1 overflow-y-auto bg-gray-50 pb-24">
+    
+    <!-- DASHBOARD TAB -->
+    <div id="tab-dashboard" class="p-4 space-y-4">
+      
+      <!-- Ao 1 Card -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-5 border-b border-gray-50 flex justify-between items-start">
+          <div class="flex gap-4">
+            <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <input type="text" id="node-name" value="Bơm oxy ao 1" class="font-bold text-gray-800 text-lg bg-transparent border-b border-transparent hover:border-gray-300 focus:border-emerald-500 focus:outline-none transition-colors w-40" onchange="saveNodeName(this.value)">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+              </div>
+              <div class="flex items-center gap-3 mt-1.5 text-xs font-medium">
+                <span class="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+                </span>
+                <span class="text-gray-500 flex items-center gap-1" id="wifi-rssi">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path></svg>
+                  -- dBm
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
         
-        <!-- Công tắc điều khiển -->
-        <div id="relay-btn" class="w-12 h-6 bg-slate-300 rounded-full p-1 cursor-pointer switch-bg relative" onclick="toggleRelay()">
-          <div class="w-4 h-4 bg-white rounded-full shadow-md switch-knob absolute top-1 left-1"></div>
+        <div class="p-5 bg-gray-50/50 flex justify-between items-center">
+          <div>
+            <p class="text-sm font-semibold text-gray-700">Trạng thái động cơ</p>
+            <p class="text-xs text-gray-500 mt-0.5" id="state-text">Đang tắt</p>
+          </div>
+          
+          <!-- UI Toggle Switch -->
+          <div class="relative inline-block w-14 h-8 align-middle select-none">
+            <input type="checkbox" id="relay-toggle" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-4 appearance-none cursor-pointer" onclick="toggleRelay(event)">
+            <label for="relay-toggle" class="toggle-label block overflow-hidden h-8 rounded-full bg-gray-300 cursor-pointer"></label>
+            
+            <!-- Loading overlay -->
+            <div id="relay-loading" class="hidden absolute inset-0 rounded-full bg-white/50 flex items-center justify-center">
+              <svg class="w-5 h-5 text-emerald-600 loading-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </div>
+          </div>
         </div>
       </div>
       
-      <!-- Cảnh báo -->
-      <div id="alert-box" class="hidden bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
-        ⚠️ Mất điện bờ ao hoặc Node mất kết nối!
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div id="tab-schedule" class="hidden p-5 space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="font-bold text-lg text-gray-800">Lịch trình chạy tự động</h2>
+        <button class="text-sm text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg">+ Thêm lịch</button>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 text-center">
+        <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <p class="text-gray-500 text-sm">Chưa có lịch trình nào được tạo.</p>
       </div>
     </div>
 
-    <!-- TAB: SCHEDULE (Demo) -->
-    <div id="tab-schedule" class="hidden space-y-4">
-      <h2 class="font-bold text-lg">Lịch trình tự động</h2>
-      <p class="text-sm text-slate-500">Tính năng đang được phát triển...</p>
-    </div>
-
-    <!-- TAB: SETTINGS -->
-    <div id="tab-settings" class="hidden space-y-4">
-      <h2 class="font-bold text-lg">Cài đặt thiết bị</h2>
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 text-sm">
-        <p><strong>Mã Trạm (ID):</strong> <span id="info-id">--</span></p>
-        <p class="mt-2 text-slate-500">Mã bí mật: <span id="info-key">***</span></p>
+    <!-- SETTINGS TAB -->
+    <div id="tab-settings" class="hidden p-5 space-y-4">
+      <h2 class="font-bold text-lg text-gray-800">Cài đặt hệ thống</h2>
+      
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+          <span class="text-sm font-medium text-gray-600">Mã Gateway (ID)</span>
+          <span class="text-sm font-bold text-gray-900 font-mono" id="info-id">--</span>
+        </div>
+        <div class="p-4 flex justify-between items-center">
+          <span class="text-sm font-medium text-gray-600">Khóa bảo mật (Key)</span>
+          <span class="text-sm font-bold text-gray-900 font-mono" id="info-key">***</span>
+        </div>
       </div>
+      
+      <button class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3.5 rounded-xl shadow-sm text-sm flex justify-center items-center gap-2 hover:bg-gray-50 transition">
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        Ghép thêm thiết bị mới
+      </button>
     </div>
+    
   </main>
 
   <!-- Bottom Navigation -->
-  <nav class="bg-white border-t border-slate-200 flex justify-around shrink-0 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-    <button onclick="switchTab('dashboard')" class="flex-1 py-3 flex flex-col items-center text-emerald-600 font-medium tab-btn" id="btn-dashboard">
-      <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-      <span class="text-[10px]">Điều khiển</span>
+  <nav class="bg-white border-t border-gray-200 flex justify-around pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.03)] fixed bottom-0 w-full z-30">
+    <button onclick="switchTab('dashboard')" class="flex-1 py-3 flex flex-col items-center text-emerald-600 font-medium tab-btn transition-colors" id="btn-dashboard">
+      <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+      <span class="text-[10px]">Thiết bị</span>
     </button>
-    <button onclick="switchTab('schedule')" class="flex-1 py-3 flex flex-col items-center text-slate-400 tab-btn" id="btn-schedule">
+    <button onclick="switchTab('schedule')" class="flex-1 py-3 flex flex-col items-center text-gray-400 tab-btn hover:text-gray-600 transition-colors" id="btn-schedule">
       <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
       <span class="text-[10px]">Lịch trình</span>
     </button>
-    <button onclick="switchTab('settings')" class="flex-1 py-3 flex flex-col items-center text-slate-400 tab-btn" id="btn-settings">
+    <button onclick="switchTab('settings')" class="flex-1 py-3 flex flex-col items-center text-gray-400 tab-btn hover:text-gray-600 transition-colors" id="btn-settings">
       <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
       <span class="text-[10px]">Cài đặt</span>
     </button>
   </nav>
 
   <script>
-    // 1. Trích xuất ID và Key
+    // 1. Khôi phục tên trạm
+    const savedName = localStorage.getItem('dyauto_node_name');
+    if(savedName) document.getElementById('node-name').value = savedName;
+    
+    function saveNodeName(val) {
+      localStorage.setItem('dyauto_node_name', val);
+    }
+
+    // 2. Trích xuất ID và Key
     const params = new URLSearchParams(window.location.search);
     let gatewayId = params.get('id') || localStorage.getItem('dyauto_id');
     let secretKey = params.get('key') || localStorage.getItem('dyauto_key');
@@ -219,13 +171,13 @@ Organizing Vietnamese software updates
     if (gatewayId && secretKey) {
       localStorage.setItem('dyauto_id', gatewayId);
       localStorage.setItem('dyauto_key', secretKey);
-      document.getElementById('gateway-label').innerText = 'Trạm: ' + gatewayId;
+      document.getElementById('gateway-label').innerText = gatewayId;
       document.getElementById('info-id').innerText = gatewayId;
     } else {
-      alert("Lỗi: Không tìm thấy mã trạm! Vui lòng quét mã QR trên tủ điện.");
+      alert("⚠️ Không tìm thấy mã trạm! Vui lòng quét mã QR trên hộp thiết bị để sử dụng.");
     }
 
-    // 2. Cấu hình MQTT
+    // 3. Cấu hình MQTT
     const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
     const topicCmd = `dyauto/${gatewayId}_${secretKey}/command`;
     const topicStatus = `dyauto/${gatewayId}_${secretKey}/status`;
@@ -240,13 +192,17 @@ Organizing Vietnamese software updates
       });
 
       client.on('connect', () => {
-        document.getElementById('conn-dot').className = 'w-2 h-2 rounded-full bg-green-400';
-        document.getElementById('conn-text').innerText = 'Đã kết nối';
+        const badge = document.getElementById('conn-badge');
+        badge.className = 'flex items-center gap-1.5 bg-emerald-100 px-3 py-1.5 rounded-full text-xs font-bold text-emerald-700 border border-emerald-200 transition-colors';
+        document.getElementById('conn-dot').className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]';
+        document.getElementById('conn-text').innerText = 'Trực tuyến';
         client.subscribe(topicStatus);
       });
 
       client.on('offline', () => {
-        document.getElementById('conn-dot').className = 'w-2 h-2 rounded-full bg-red-400';
+        const badge = document.getElementById('conn-badge');
+        badge.className = 'flex items-center gap-1.5 bg-red-100 px-3 py-1.5 rounded-full text-xs font-bold text-red-700 border border-red-200 transition-colors';
+        document.getElementById('conn-dot').className = 'w-2 h-2 rounded-full bg-red-500';
         document.getElementById('conn-text').innerText = 'Mất mạng';
       });
 
@@ -256,9 +212,24 @@ Organizing Vietnamese software updates
             const data = JSON.parse(message.toString());
             if (data.node === 1) {
               isRelayOn = (data.state === 'ON');
-              updateUI(isRelayOn);
+              
+              // Cập nhật UI Switch
+              const toggle = document.getElementById('relay-toggle');
+              if(!isDebouncing) {
+                toggle.checked = isRelayOn;
+              }
+              document.getElementById('state-text').innerText = isRelayOn ? 'Đang chạy' : 'Đang tắt';
+              document.getElementById('state-text').className = isRelayOn ? 'text-xs mt-0.5 font-bold text-emerald-600' : 'text-xs text-gray-500 mt-0.5 font-medium';
+
               if (data.wifi !== undefined) {
-                document.getElementById('wifi-rssi').innerText = 'Sóng: ' + data.wifi + ' dBm';
+                document.getElementById('wifi-rssi').innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path></svg> ${data.wifi} dBm`;
+              }
+              
+              // Cảnh báo mất nguồn 220V
+              if(data.power === "LOST") {
+                  document.getElementById('power-alert').classList.remove('hidden');
+              } else {
+                  document.getElementById('power-alert').classList.add('hidden');
               }
             }
           } catch(e) {}
@@ -266,13 +237,25 @@ Organizing Vietnamese software updates
       });
     }
 
-    // 3. Xử lý nút bấm (State of truth + Debounce)
-    function toggleRelay() {
-      if (!client || !client.connected || isDebouncing) return;
+    // 4. Xử lý nút bấm (State of Truth + Debounce)
+    function toggleRelay(e) {
+      if (!client || !client.connected) {
+          e.preventDefault();
+          alert("Chưa kết nối đến máy chủ. Vui lòng kiểm tra mạng.");
+          return;
+      }
+      
+      if (isDebouncing) {
+          e.preventDefault();
+          return; // Khóa nếu đang chờ
+      }
       
       isDebouncing = true;
-      const btn = document.getElementById('relay-btn');
-      btn.classList.add('loading');
+      const loader = document.getElementById('relay-loading');
+      loader.classList.remove('hidden');
+      
+      // Chặn UI tự nhảy
+      e.preventDefault(); 
       
       const newCmd = isRelayOn ? 'OFF' : 'ON';
       client.publish(topicCmd, JSON.stringify({ node: 1, cmd: newCmd }), { qos: 1 });
@@ -280,32 +263,25 @@ Organizing Vietnamese software updates
       // Mở khóa sau 2 giây
       setTimeout(() => {
         isDebouncing = false;
-        btn.classList.remove('loading');
+        loader.classList.add('hidden');
+        // Nếu sau 2s không nhận được phản hồi, tự reset UI về thực tế
+        document.getElementById('relay-toggle').checked = isRelayOn;
       }, 2000);
     }
 
-    function updateUI(isOn) {
-      const btn = document.getElementById('relay-btn');
-      if (isOn) btn.classList.add('active');
-      else btn.classList.remove('active');
-    }
-
-    // 4. Đổi Tab
+    // 5. Đổi Tab
     function switchTab(tabId) {
       document.getElementById('tab-dashboard').classList.add('hidden');
       document.getElementById('tab-schedule').classList.add('hidden');
       document.getElementById('tab-settings').classList.add('hidden');
       
-      document.getElementById('btn-dashboard').className = 'flex-1 py-3 flex flex-col items-center text-slate-400 tab-btn';
-      document.getElementById('btn-schedule').className = 'flex-1 py-3 flex flex-col items-center text-slate-400 tab-btn';
-      document.getElementById('btn-settings').className = 'flex-1 py-3 flex flex-col items-center text-slate-400 tab-btn';
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.className = 'flex-1 py-3 flex flex-col items-center text-gray-400 tab-btn hover:text-gray-600 transition-colors';
+      });
       
       document.getElementById('tab-' + tabId).classList.remove('hidden');
-      document.getElementById('btn-' + tabId).classList.add('text-emerald-600');
-      document.getElementById('btn-' + tabId).classList.remove('text-slate-400');
+      document.getElementById('btn-' + tabId).className = 'flex-1 py-3 flex flex-col items-center text-emerald-600 font-medium tab-btn transition-colors';
     }
   </script>
 </body>
 </html>
-AquaAuto_WebApp_v2.html
-Đang hiển thị AquaAuto_WebApp_v2.html.
