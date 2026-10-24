@@ -1,0 +1,20 @@
+{
+  "name": "AquaAuto",
+  "short_name": "AquaAuto",
+  "description": "Điều khiển ao nuôi và thiết bị nông nghiệp",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f8f5",
+  "theme_color": "#087f63",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23087f63'/%3E%3Cpath fill='%23fff' d='M128 280c40-96 216-96 256 0-24 64-88 104-128 104s-104-40-128-104zm128-48a36 36 0 1 0 0-72 36 36 0 0 0 0 72z'/%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
