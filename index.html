@@ -54,10 +54,10 @@ function showInstall(force=false){
   instructions.innerHTML='Nhấn <b>Cài đặt</b> bên dưới, sau đó xác nhận trong hộp thoại của trình duyệt.';
   action.textContent='Cài đặt';
  }else if(safariIOS){
-  instructions.innerHTML='<b>iPhone/iPad · Safari</b><br>1. Nhấn nút <b>Chia sẻ</b> (hình vuông có mũi tên đi lên) ở thanh công cụ.<br>2. Cuộn xuống và chọn <b>Thêm vào MH chính</b> (Add to Home Screen).<br>3. Nhấn <b>Thêm</b> ở góc trên. Nếu không thấy mục này, kéo xuống cuối bảng Chia sẻ và chọn sửa tác vụ.';
+  instructions.innerHTML='<b>iPhone/iPad · Safari</b><br>1. Mở AquaAuto trực tiếp bằng <b>Safari</b>.<br>2. Nhấn <b>Chia sẻ</b> (biểu tượng hình vuông có mũi tên đi lên).<br>3. Chọn <b>Thêm vào MH chính</b> (Add to Home Screen), bật <b>Mở dưới dạng ứng dụng web</b> nếu có, rồi nhấn <b>Thêm</b>.<br>4. Nếu không thấy mục này, cuộn xuống cuối bảng Chia sẻ và chọn <b>Sửa tác vụ</b>. iPhone yêu cầu thao tác này trong Safari; website không thể tự bấm cài đặt thay bạn.';
   action.textContent='Đã hiểu';
  }else if(ios){
-  instructions.innerHTML='<b>iPhone/iPad</b><br>Hãy mở đường dẫn AquaAuto bằng <b>Safari</b> (không phải trình duyệt bên trong Zalo/Facebook/Chrome). Sau đó nhấn <b>Chia sẻ → Thêm vào MH chính → Thêm</b>.';
+  instructions.innerHTML='<b>iPhone/iPad</b><br>Hãy mở đường dẫn AquaAuto bằng <b>Safari</b> (không phải trình duyệt bên trong Zalo/Facebook). Nhấn <b>Chia sẻ → Thêm vào MH chính → Thêm</b>. Trên iPhone, thao tác cài đặt cần xác nhận thủ công trong Safari.';
   action.textContent='Đã hiểu';
  }else if(chromeAndroid){
   instructions.innerHTML='<b>Android · Google Chrome</b><br>1. Nhấn <b>Cài đặt</b> nếu hộp thoại cài ứng dụng của Chrome xuất hiện.<br>2. Nếu không có hộp thoại, nhấn menu <b>⋮</b> góc trên bên phải.<br>3. Chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>, rồi xác nhận.<br><span style="color:#667b73">Tên mục có thể khác đôi chút tùy phiên bản Chrome.</span>';
@@ -78,7 +78,7 @@ function showInstall(force=false){
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;if(!isStandalone&&!localStorage.getItem('aquaauto.installDismissed'))showInstall(true)});
 window.addEventListener('appinstalled',()=>{installEvent=null;$('install-modal').classList.add('hide');localStorage.setItem('aquaauto.installDismissed','1');toast('AquaAuto đã được cài đặt')});
-$('install-settings').onclick=()=>showInstall(true);
+$('install-settings').onclick=async()=>{if(installEvent&&!isStandalone){const e=installEvent;try{await e.prompt();const choice=await e.userChoice;installEvent=null;if(choice&&choice.outcome==='accepted'){localStorage.setItem('aquaauto.installDismissed','1');toast('AquaAuto đang được cài đặt');return;}}catch{installEvent=null;} }showInstall(true);};
 $('install-close').onclick=$('install-later').onclick=()=>{$('install-modal').classList.add('hide');try{localStorage.setItem('aquaauto.installDismissed','1')}catch{}};
 $('install-action').onclick=async()=>{
  if(installEvent){const e=installEvent;installEvent=null;try{await e.prompt();const choice=await e.userChoice;if(choice&&choice.outcome==='accepted'){localStorage.setItem('aquaauto.installDismissed','1');$('install-modal').classList.add('hide')}else{$('install-modal').classList.add('hide');localStorage.setItem('aquaauto.installDismissed','1')}}catch{$('install-modal').classList.add('hide')}return}
