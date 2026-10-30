@@ -38,12 +38,12 @@ setInterval(()=>{if(online&&lastGatewayStatusAt&&Date.now()-lastGatewayStatusAt>
 // PWA install: native prompt when supported; otherwise give device/browser-specific steps.
 const isStandalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const ua=navigator.userAgent;
-const ios=/iphone|ipad|ipod/i.test(ua);
+const ios=/iphone|ipad|ipod/i.test(ua)||( /macintosh/i.test(ua) && navigator.maxTouchPoints>1 );
 const android=/android/i.test(ua);
 const samsung=/samsungbrowser/i.test(ua);
 const chromeAndroid=android&&/chrome\//i.test(ua)&&!samsung;
 const edge=/edg\//i.test(ua);
-const safariIOS=ios&&/safari/i.test(ua)&&!/crios|fxios|edgios|opios/i.test(ua);
+const safariIOS=ios&&(/safari/i.test(ua)||/macintosh/i.test(ua))&&!/crios|fxios|edgios|opios/i.test(ua);
 function showInstall(force=false){
  if(isStandalone){toast('AquaAuto đã được cài đặt hoặc thêm vào màn hình chính.');return}
  if(!force&&localStorage.getItem('aquaauto.installDismissed')==='1')return;
@@ -78,10 +78,10 @@ function showInstall(force=false){
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;if(!isStandalone&&!localStorage.getItem('aquaauto.installDismissed'))showInstall(true)});
 window.addEventListener('appinstalled',()=>{installEvent=null;$('install-modal').classList.add('hide');localStorage.setItem('aquaauto.installDismissed','1');toast('AquaAuto đã được cài đặt')});
-$('install-settings').onclick=async()=>{if(installEvent&&!isStandalone){const e=installEvent;try{await e.prompt();const choice=await e.userChoice;installEvent=null;if(choice&&choice.outcome==='accepted'){localStorage.setItem('aquaauto.installDismissed','1');toast('AquaAuto đang được cài đặt');return;}}catch{installEvent=null;} }showInstall(true);};
+$('install-settings').onclick=()=>showInstall(true);
 $('install-close').onclick=$('install-later').onclick=()=>{$('install-modal').classList.add('hide');try{localStorage.setItem('aquaauto.installDismissed','1')}catch{}};
 $('install-action').onclick=async()=>{
- if(installEvent){const e=installEvent;installEvent=null;try{await e.prompt();const choice=await e.userChoice;if(choice&&choice.outcome==='accepted'){localStorage.setItem('aquaauto.installDismissed','1');$('install-modal').classList.add('hide')}else{$('install-modal').classList.add('hide');localStorage.setItem('aquaauto.installDismissed','1')}}catch{$('install-modal').classList.add('hide')}return}
+ if(installEvent){const e=installEvent;try{await e.prompt();const choice=await e.userChoice;installEvent=null;if(choice&&choice.outcome==='accepted'){localStorage.setItem('aquaauto.installDismissed','1');$('install-modal').classList.add('hide');toast('AquaAuto đang được cài đặt')}else{$('install-modal').classList.add('hide');localStorage.setItem('aquaauto.installDismissed','1')}}catch{installEvent=null;$('install-modal').classList.add('hide');toast('Không mở được hộp thoại cài đặt. Hãy dùng hướng dẫn bên dưới.')}return}
  $('install-modal').classList.add('hide');
 };
 if(!isStandalone&&!localStorage.getItem('aquaauto.installDismissed'))setTimeout(()=>{if(!installEvent)showInstall()},1800);
