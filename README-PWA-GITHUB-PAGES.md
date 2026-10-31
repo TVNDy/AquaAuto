@@ -40,3 +40,7 @@ Kiểm tra trực tiếp các URL sau phải trả về nội dung, không phả
 - Device Secret và pairing vẫn lưu theo logic cũ; thay đổi này không phải thay đổi giao thức MQTT.
 - `beforeinstallprompt` do Chrome quản lý. Không có cách JavaScript hợp lệ để ép Chrome phát sự kiện hoặc tự cài không cần người dùng xác nhận.
 - Đã kiểm tra cú pháp JavaScript của trang, cú pháp Service Worker và JSON manifest. Chưa xác minh deployment trên GitHub Pages hoặc kiểm thử trên điện thoại thật.
+
+
+## Gợi ý ghim màn hình chính (FIX5)
+Trang không tự bật modal cài đặt khi mở lần đầu. Một dòng nhắc ghim AquaAuto được hiển thị xuyên suốt ba tab. Người dùng có thể chạm dòng nhắc để xem hướng dẫn/cài đặt; nút × ẩn dòng nhắc vĩnh viễn trên trình duyệt đó bằng localStorage. Khi chạy ở chế độ ứng dụng đã cài, dòng nhắc tự ẩn.
