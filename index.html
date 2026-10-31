@@ -21,7 +21,7 @@
 <div class="modalback hide" id="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-title"><div class="modal"><div style="display:flex;justify-content:space-between;align-items:center"><div class="modalicon">📲</div><button class="close" id="install-close" aria-label="Đóng">✕</button></div><h2 id="install-title">Cài AquaAuto lên màn hình chính</h2><p>Không phải điện thoại nào cũng cho website tự thêm biểu tượng. AquaAuto sẽ mở hộp thoại cài đặt nếu trình duyệt hỗ trợ; nếu không, hãy làm theo hướng dẫn đúng với thiết bị của bạn.</p><div id="install-instructions" class="installsteps">Đang kiểm tra cách cài đặt phù hợp với trình duyệt…</div><div class="modalactions"><button class="btn" id="install-later">Để sau</button><button class="btn primary" id="install-action">Tiếp tục</button></div><p style="font-size:10px;margin-bottom:0">Bạn có thể cài sau trong mục Cài đặt.</p></div></div>
 <script>
 (()=>{'use strict';const $=id=>document.getElementById(id);const params=new URLSearchParams(location.search);const stored=(()=>{try{return JSON.parse(localStorage.getItem('aquaauto.pairing')||'{}')}catch{return {}}})();
-const gateway=(params.get('id')||stored.gateway||'GW_01').trim();const secret=(params.get('key')||stored.secret||'').trim();const broker='broker.emqx.io',port=8084,path='/mqtt';let client=null,installEvent=null,pending=null,timeoutHandle=null,toastTimer=null,online=false,logCount=0;let actualState=null,lastGatewayStatusAt=0;const nodes=[{id:1,name:'Thiết bị Node 1',state:null,pending:null}];
+const gateway=(params.get('id')||stored.gateway||'GW_01').trim();const secret=(params.get('key')||stored.secret||'').trim();const broker='broker.emqx.io',port=8084,path='/mqtt';let client=null,pending=null,timeoutHandle=null,toastTimer=null,online=false,logCount=0;let actualState=null,lastGatewayStatusAt=0;const nodes=[{id:1,name:'Thiết bị Node 1',state:null,pending:null}];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function toast(s){$('toast').textContent=s;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3200)}function addLog(title,desc){const row=document.createElement('div');row.className='logrow';const left=document.createElement('div');left.innerHTML='<strong></strong><small></small>';left.children[0].textContent=title;left.children[1].textContent=desc;const time=document.createElement('span');time.className='muted';time.textContent=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});row.append(left,time);if(logCount===0)$('logs').replaceChildren();$('logs').prepend(row);logCount++;while($('logs').children.length>4)$('logs').lastElementChild.remove()}
 function topicRoot(){return `dyauto/${gateway}_${secret}`}function makeCommandId(){return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`}function setConn(on,label){online=on;$('conn-dot').classList.toggle('on',on);$('conn-label').textContent=label;$('mqtt-pill').textContent=on?'Đã kết nối':'Ngoại tuyến';$('mqtt-pill').className='pill '+(on?'good':'bad');$('setting-conn').textContent=label}
 function renderNodes(){const host=$('nodes');host.replaceChildren();nodes.forEach(n=>{const wrap=document.createElement('div');wrap.className='node';const left=document.createElement('div');left.className='nodeleft';const icon=document.createElement('div');icon.className='nodeicon';icon.textContent='⏻';const copy=document.createElement('div');copy.innerHTML='<div class="nodename"></div><div class="state"></div>';copy.children[0].textContent=n.name;copy.children[1].innerHTML='Trạng thái: <strong></strong>';copy.children[1].querySelector('strong').textContent=n.state===true?'ĐANG BẬT':n.state===false?'ĐANG TẮT':'CHƯA CÓ XÁC NHẬN';if(n.pending)copy.children[1].querySelector('strong').textContent='ĐANG CHỜ XÁC NHẬN';left.append(icon,copy);const label=document.createElement('label');label.className='switch';label.setAttribute('aria-label','Yêu cầu bật hoặc tắt '+n.name);const input=document.createElement('input');input.type='checkbox';input.checked=n.state===true;input.disabled=!online||!!n.pending||n.state===null;input.addEventListener('change',()=>sendCommand(n,input.checked?'ON':'OFF'));const track=document.createElement('span');track.className='track';label.append(input,track);wrap.append(left,label);host.append(wrap);const actions=document.createElement('div');actions.className='actions';const on=document.createElement('button');on.className='btn primary';on.textContent='Bật thiết bị';on.disabled=!online||!!n.pending||n.state===true;on.onclick=()=>sendCommand(n,'ON');const off=document.createElement('button');off.className='btn';off.textContent='Tắt thiết bị';off.disabled=!online||!!n.pending||n.state===false;off.onclick=()=>sendCommand(n,'OFF');actions.append(on,off);host.append(actions);});}
@@ -29,62 +29,84 @@ function sendCommand(n,cmd){if(!client||!client.connected){toast('Gateway đang 
 function connect(){if(!secret){setConn(false,'Chưa ghép nối');$('setup-pill').textContent='Thiếu mã QR';$('gateway-caption').textContent='Hãy mở đường dẫn từ mã QR trên tủ Gateway để ghép nối.';toast('Thiếu key trong đường dẫn QR.');return}if(!window.mqtt){setConn(false,'Không tải được kết nối');toast('Không tải được thư viện MQTT. Kiểm tra Internet.');return}try{if(client)client.end(true);const clientId='AA-'+gateway.replace(/[^a-z0-9]/gi,'').slice(-10)+'-'+Math.random().toString(16).slice(2,8);client=window.mqtt.connect(`wss://${broker}:${port}${path}`,{clientId,clean:true,connectTimeout:10000,keepalive:30,reconnectPeriod:3000,protocolVersion:4});setConn(false,'Đang kết nối…');client.on('connect',()=>{setConn(true,'Đã kết nối Gateway');lastGatewayStatusAt=Date.now();$('setup-pill').textContent='Đã ghép nối';client.subscribe(topicRoot()+'/status',{qos:1},err=>{if(err){toast('Không đọc được trạng thái Gateway')}else addLog('Đã kết nối','Đang chờ trạng thái thiết bị')})});client.on('reconnect',()=>setConn(false,'Đang kết nối lại…'));client.on('offline',()=>{setConn(false,'Gateway ngoại tuyến');nodes.forEach(n=>n.pending=null);renderNodes()});client.on('close',()=>setConn(false,'Mất kết nối'));client.on('error',()=>{setConn(false,'Lỗi kết nối');});client.on('message',(topic,message)=>{if(topic!==topicRoot()+'/status')return;let d;try{d=JSON.parse(message.toString())}catch{return}if(d.gateway&&d.gateway!==gateway)return;lastGatewayStatusAt=Date.now();const n=nodes.find(x=>x.id===Number(d.node));if(!n)return;if(d.state!=='ON'&&d.state!=='OFF')return;n.state=d.state==='ON';n.pending=null;if(pending&&pending.node===n.id&&pending.cmd===d.state&&d.command_id===pending.commandId&&String(d.command_result||'').startsWith('accepted')){clearTimeout(timeoutHandle);pending=null;toast('Gateway đã xác nhận '+(n.state?'BẬT':'TẮT'));addLog('Gateway đã xác nhận',`Node ${n.id} · ${d.state}`)}else addLog('Đã cập nhật trạng thái',`Node ${n.id} · ${d.state}`);$('gateway-state').textContent='Đang hoạt động';$('gateway-state').className='pill good';$('wifi').textContent=d.wifi||'—';$('rssi').innerHTML=esc(d.rssi??'—')+' <span style="font-size:10px">dBm</span>';$('power').textContent=d.power||'Chưa rõ';renderNodes()})}catch(e){setConn(false,'Không thể kết nối')}}
 function go(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));window.scrollTo({top:0,behavior:'smooth'})}document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>go(b.dataset.page));
 // QR parameters are consumed once and removed from the visible URL; localStorage is a convenience, not a security boundary.
-if(params.has('id')&&params.has('key')){try{const previous=JSON.parse(localStorage.getItem('aquaauto.pairing')||'{}');if(previous.gateway!==gateway||previous.secret!==secret){localStorage.removeItem('aquaauto.installDismissed')}localStorage.setItem('aquaauto.pairing',JSON.stringify({gateway,secret}))}catch{};history.replaceState({},'',location.pathname+location.hash)}$('gateway-caption').textContent='Gateway '+gateway+' · Điều khiển và theo dõi';$('setting-gateway').textContent=gateway;renderNodes();connect();$('reconnect').onclick=connect;$('forget').onclick=()=>{if(confirm('Quên Gateway đã ghép nối trên trình duyệt này?')){try{localStorage.removeItem('aquaauto.pairing')}catch{};if(client)client.end(true);toast('Đã xóa thông tin ghép nối khỏi trình duyệt');setConn(false,'Chưa ghép nối');$('gateway-caption').textContent='Hãy quét lại mã QR của Gateway.'}};$('clear-log').onclick=()=>{logCount=0;$('logs').innerHTML='<div class="empty">Chưa có hoạt động.</div>'};
+if(params.has('id')&&params.has('key')){try{const previous=JSON.parse(localStorage.getItem('aquaauto.pairing')||'{}');if(previous.gateway!==gateway||previous.secret!==secret){/* Pairing changed; PWA install preference remains device/browser-wide. */}localStorage.setItem('aquaauto.pairing',JSON.stringify({gateway,secret}))}catch{};history.replaceState({},'',location.pathname+location.hash)}$('gateway-caption').textContent='Gateway '+gateway+' · Điều khiển và theo dõi';$('setting-gateway').textContent=gateway;renderNodes();connect();$('reconnect').onclick=connect;$('forget').onclick=()=>{if(confirm('Quên Gateway đã ghép nối trên trình duyệt này?')){try{localStorage.removeItem('aquaauto.pairing')}catch{};if(client)client.end(true);toast('Đã xóa thông tin ghép nối khỏi trình duyệt');setConn(false,'Chưa ghép nối');$('gateway-caption').textContent='Hãy quét lại mã QR của Gateway.'}};$('clear-log').onclick=()=>{logCount=0;$('logs').innerHTML='<div class="empty">Chưa có hoạt động.</div>'};
 // Schedule UI deliberately stores local drafts only; firmware protocol has no schedule command yet.
 function readSchedules(){try{return JSON.parse(localStorage.getItem('aquaauto.schedules')||'[]')}catch{return []}}function renderSchedules(){const host=$('schedule-list');host.replaceChildren();const list=readSchedules();if(!list.length){host.innerHTML='<div class="empty">Chưa có lịch nào được lưu.</div>';return}list.forEach((s,i)=>{const el=document.createElement('div');el.className='schedule';const copy=document.createElement('div');copy.innerHTML='<strong></strong><small></small>';copy.children[0].textContent=s.name;copy.children[1].textContent=`Node ${s.node} · ${s.action==='ON'?'Bật':'Tắt'} · ${s.time} · ${s.days}`;const del=document.createElement('button');del.className='btn';del.textContent='Xóa';del.onclick=()=>{const arr=readSchedules();arr.splice(i,1);localStorage.setItem('aquaauto.schedules',JSON.stringify(arr));renderSchedules()};el.append(copy,del);host.append(el)})}$('schedule-form').addEventListener('submit',e=>{e.preventDefault();const days=[...document.querySelectorAll('.day input:checked')].map(x=>x.value);if(!days.length){toast('Chọn ít nhất một ngày trong tuần');return}const list=readSchedules();list.push({name:$('schedule-name').value.trim(),node:$('schedule-node').value,action:$('schedule-action').value,time:$('schedule-time').value,days:days.join(', ')});localStorage.setItem('aquaauto.schedules',JSON.stringify(list));renderSchedules();e.target.reset();toast('Đã lưu lịch nháp trên trình duyệt; Gateway chưa thực thi lịch')});renderSchedules();
 // Mark the state as stale when retained MQTT data has not been refreshed recently.
 // A broker connection alone does not prove the Gateway is alive.
 setInterval(()=>{if(online&&lastGatewayStatusAt&&Date.now()-lastGatewayStatusAt>75000){$('gateway-state').textContent='Mất cập nhật trạng thái';$('gateway-state').className='pill bad';$('conn-label').textContent='MQTT kết nối · Gateway chưa cập nhật';$('setting-conn').textContent='Gateway chưa cập nhật trạng thái';}},10000);
-// PWA install: native prompt when supported; otherwise give device/browser-specific steps.
+// PWA install: capture the browser-owned install event and use one shared modal.
+// GitHub Pages must serve this app over HTTPS. Chrome decides when installation is eligible.
 const isStandalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const ua=navigator.userAgent;
-const ios=/iphone|ipad|ipod/i.test(ua)||( /macintosh/i.test(ua) && navigator.maxTouchPoints>1 );
+const ios=/iphone|ipad|ipod/i.test(ua)||(/macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
 const android=/android/i.test(ua);
 const samsung=/samsungbrowser/i.test(ua);
-const chromeAndroid=android&&/chrome\//i.test(ua)&&!samsung;
+const chromeAndroid=android&&(/chrome\//i.test(ua)||!!navigator.userAgentData?.brands?.some(x=>x.brand==='Google Chrome'))&&!samsung;
 const edge=/edg\//i.test(ua);
 const safariIOS=ios&&(/safari/i.test(ua)||/macintosh/i.test(ua))&&!/crios|fxios|edgios|opios/i.test(ua);
-function showInstall(force=false){
- if(isStandalone){toast('AquaAuto đã được cài đặt hoặc thêm vào màn hình chính.');return}
- if(!force&&localStorage.getItem('aquaauto.installDismissed')==='1')return;
+const installDismissed=()=>{try{return localStorage.getItem('aquaauto.installDismissed.v2')==='1'}catch{return false}};
+const setInstallDismissed=()=>{try{localStorage.setItem('aquaauto.installDismissed.v2','1')}catch{}};
+let installEvent=null;
+let installModalOpenedAt=0;
+function renderInstallModal(force=false){
+ if(isStandalone){toast('AquaAuto đang chạy dưới dạng ứng dụng đã cài.');return}
+ if(!force&&installDismissed())return;
  const box=$('install-modal'),instructions=$('install-instructions'),action=$('install-action');
- box.classList.remove('hide');
- action.classList.remove('hide');
+ box.classList.remove('hide');installModalOpenedAt=Date.now();action.textContent='Cài đặt';
  if(installEvent){
-  instructions.innerHTML='Nhấn <b>Cài đặt</b> bên dưới, sau đó xác nhận trong hộp thoại của trình duyệt.';
-  action.textContent='Cài đặt';
- }else if(safariIOS){
-  instructions.innerHTML='<b>iPhone/iPad · Safari</b><br>1. Mở AquaAuto trực tiếp bằng <b>Safari</b>.<br>2. Nhấn <b>Chia sẻ</b> (biểu tượng hình vuông có mũi tên đi lên).<br>3. Chọn <b>Thêm vào MH chính</b> (Add to Home Screen), bật <b>Mở dưới dạng ứng dụng web</b> nếu có, rồi nhấn <b>Thêm</b>.<br>4. Nếu không thấy mục này, cuộn xuống cuối bảng Chia sẻ và chọn <b>Sửa tác vụ</b>. iPhone yêu cầu thao tác này trong Safari; website không thể tự bấm cài đặt thay bạn.';
-  action.textContent='Đã hiểu';
- }else if(ios){
-  instructions.innerHTML='<b>iPhone/iPad</b><br>Hãy mở đường dẫn AquaAuto bằng <b>Safari</b> (không phải trình duyệt bên trong Zalo/Facebook). Nhấn <b>Chia sẻ → Thêm vào MH chính → Thêm</b>. Trên iPhone, thao tác cài đặt cần xác nhận thủ công trong Safari.';
-  action.textContent='Đã hiểu';
+  instructions.innerHTML='<b>Đã sẵn sàng cài đặt</b><br>Chrome đã cấp quyền cài đặt AquaAuto. Nhấn <b>Cài đặt</b>, sau đó xác nhận trong hộp thoại của Chrome.';
  }else if(chromeAndroid){
-  instructions.innerHTML='<b>Android · Google Chrome</b><br>1. Nhấn <b>Cài đặt</b> nếu hộp thoại cài ứng dụng của Chrome xuất hiện.<br>2. Nếu không có hộp thoại, nhấn menu <b>⋮</b> góc trên bên phải.<br>3. Chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>, rồi xác nhận.<br><span style="color:#667b73">Tên mục có thể khác đôi chút tùy phiên bản Chrome.</span>';
-  action.textContent='Đã hiểu';
- }else if(samsung){
-  instructions.innerHTML='<b>Android · Samsung Internet</b><br>1. Mở menu <b>☰</b> ở thanh công cụ.<br>2. Chọn <b>Thêm trang vào</b> → <b>Màn hình chờ</b> (hoặc mục cài đặt ứng dụng nếu được hiển thị).<br>3. Xác nhận thêm biểu tượng AquaAuto.';
-  action.textContent='Đã hiểu';
+  instructions.innerHTML='<b>Android · Google Chrome</b><br>Trang web chưa nhận được quyền mở hộp thoại cài đặt tự động từ Chrome. Nhấn <b>Cài đặt</b> để kiểm tra lại. Nếu Chrome vẫn chưa cấp quyền, mở menu <b>⋮</b> ở góc trên → <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>.<br><small>Để Chrome cho phép cài PWA, hãy mở bằng Chrome (không phải trình duyệt trong Zalo/Facebook), dùng HTTPS và tải trang hoàn chỉnh ít nhất một lần.</small>';
+ }else if(safariIOS){
+  instructions.innerHTML='<b>iPhone/iPad · Safari</b><br>1. Mở AquaAuto trực tiếp bằng <b>Safari</b>.<br>2. Nhấn <b>Chia sẻ</b>.<br>3. Chọn <b>Thêm vào MH chính</b> → <b>Thêm</b>.<br><small>Safari không cung cấp API để website tự bật hộp thoại cài đặt.</small>';
+ }else if(ios){
+  instructions.innerHTML='<b>iPhone/iPad</b><br>Mở AquaAuto bằng Safari, nhấn <b>Chia sẻ → Thêm vào MH chính → Thêm</b>.';
+ }else if(android&&samsung){
+  instructions.innerHTML='<b>Android · Samsung Internet</b><br>Mở menu <b>☰</b> → <b>Thêm trang vào</b> → <b>Màn hình chờ</b>. Có thể mở bằng Chrome để dùng PWA install prompt.';
  }else if(android){
-  instructions.innerHTML='<b>Android · trình duyệt khác</b><br>Mở menu trình duyệt (thường là <b>⋮</b> hoặc <b>☰</b>) rồi tìm <b>Cài đặt ứng dụng</b>, <b>Install app</b> hoặc <b>Thêm vào màn hình chính</b>. Xác nhận khi được hỏi. Nếu không có mục này, hãy thử Google Chrome.';
-  action.textContent='Đã hiểu';
+  instructions.innerHTML='<b>Android</b><br>Ưu tiên mở AquaAuto bằng <b>Google Chrome</b>. Nếu không có hộp thoại tự động, mở menu trình duyệt và chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>.';
  }else if(edge||/chrome\//i.test(ua)){
-  instructions.innerHTML='<b>Máy tính · Chrome/Edge</b><br>Tìm biểu tượng <b>Cài đặt ứng dụng</b> ở bên phải thanh địa chỉ hoặc mở menu trình duyệt và chọn <b>Cài đặt AquaAuto</b> / <b>Install app</b>. Xác nhận trong hộp thoại.';
-  action.textContent='Đã hiểu';
+  instructions.innerHTML='<b>Máy tính · Chrome/Edge</b><br>Nhấn biểu tượng cài đặt ở thanh địa chỉ hoặc mở menu trình duyệt và chọn <b>Cài đặt AquaAuto</b>.';
  }else{
-  instructions.innerHTML='<b>Trình duyệt hiện tại</b><br>Mở menu của trình duyệt và tìm <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>. Nếu không có lựa chọn này, hãy mở AquaAuto bằng Google Chrome trên Android hoặc Safari trên iPhone/iPad.';
-  action.textContent='Đã hiểu';
+  instructions.innerHTML='<b>Trình duyệt hiện tại</b><br>Mở bằng Google Chrome Android để có khả năng cài PWA tự động. Nếu không, tìm <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b> trong menu trình duyệt.';
  }
 }
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;if(!isStandalone){const modalOpen=!$('install-modal').classList.contains('hide');if(modalOpen||!localStorage.getItem('aquaauto.installDismissed'))showInstall(true)}});
-window.addEventListener('appinstalled',()=>{installEvent=null;$('install-modal').classList.add('hide');localStorage.setItem('aquaauto.installDismissed','1');toast('AquaAuto đã được cài đặt')});
-$('install-settings').onclick=()=>showInstall(true);
-$('install-close').onclick=$('install-later').onclick=()=>{$('install-modal').classList.add('hide');try{localStorage.setItem('aquaauto.installDismissed','1')}catch{}};
+window.addEventListener('beforeinstallprompt',e=>{
+ e.preventDefault();installEvent=e;
+ if(!isStandalone&&!$('install-modal').classList.contains('hide'))renderInstallModal(true);
+});
+window.addEventListener('appinstalled',()=>{
+ installEvent=null;$('install-modal').classList.add('hide');setInstallDismissed();
+ try{localStorage.setItem('aquaauto.installed','1')}catch{}
+ toast('AquaAuto đã được cài đặt thành công');
+});
+$('install-settings').onclick=()=>renderInstallModal(true);
+$('install-close').onclick=$('install-later').onclick=()=>{$('install-modal').classList.add('hide');setInstallDismissed()};
 $('install-action').onclick=async()=>{
- if(installEvent){const e=installEvent;try{await e.prompt();const choice=await e.userChoice;installEvent=null;if(choice&&choice.outcome==='accepted'){localStorage.setItem('aquaauto.installDismissed','1');$('install-modal').classList.add('hide');toast('AquaAuto đang được cài đặt')}else{$('install-modal').classList.add('hide');toast('Bạn có thể cài lại từ menu trình duyệt hoặc mục Cài đặt')}}catch{installEvent=null;toast('Trình duyệt không mở được hộp thoại. Hãy dùng hướng dẫn cài đặt trong cửa sổ này.')}return}
- // Native install prompt is unavailable in this browser/session; keep the guidance visible.
- toast('Trình duyệt hiện không cấp nút cài đặt tự động. Hãy làm theo hướng dẫn phía trên.');
+ if(installEvent){
+  const e=installEvent;
+  try{
+   await e.prompt();
+   const choice=await e.userChoice;
+   installEvent=null;
+   if(choice&&choice.outcome==='accepted'){$('install-modal').classList.add('hide');setInstallDismissed();toast('Đã chấp nhận cài đặt AquaAuto')}
+   else{renderInstallModal(true);toast('Bạn chưa xác nhận cài đặt. Có thể nhấn Cài đặt lại khi Chrome cấp quyền mới.')}
+  }catch(err){installEvent=null;renderInstallModal(true);toast('Chrome không mở được hộp thoại. Hãy dùng menu ⋮ của Chrome.')}
+  return;
+ }
+ // The browser does not expose a programmable install prompt at this moment.
+ if(chromeAndroid){
+  $('install-instructions').innerHTML='<b>Chưa có hộp thoại cài đặt tự động</b><br>Chrome chưa cấp sự kiện cài đặt cho phiên này. Hãy đóng cửa sổ này, nhấn menu <b>⋮</b> của Chrome và chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>. Nếu không thấy mục này, kiểm tra lại URL GitHub Pages, manifest và Service Worker rồi tải lại trang.';
+  toast('Chrome chưa cấp quyền mở hộp thoại tự động');
+ }else if(safariIOS||ios){
+  $('install-instructions').innerHTML='<b>Cài trên iPhone/iPad</b><br>Nhấn nút <b>Chia sẻ</b> của Safari → <b>Thêm vào MH chính</b> → <b>Thêm</b>. Website không thể tự thực hiện thay bạn.';
+ }else{
+  $('install-instructions').innerHTML='<b>Chưa có hộp thoại cài đặt tự động</b><br>Mở menu trình duyệt và chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>. Hãy thử mở bằng Google Chrome nếu đang dùng trình duyệt khác.';
+  toast('Trình duyệt chưa cấp quyền cài đặt tự động');
+ }
 };
-if(!isStandalone&&!localStorage.getItem('aquaauto.installDismissed'))setTimeout(()=>{if(!installEvent)showInstall()},1800);
-if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));window.addEventListener('beforeunload',()=>{if(client)client.end(true)});
+// First visit only. Do not tie install-dismissal to Gateway ID or Device Secret.
+if(!isStandalone&&!installDismissed())setTimeout(()=>renderInstallModal(),3000);
+if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}));window.addEventListener('beforeunload',()=>{if(client)client.end(true)});
 })();</script></body></html>
