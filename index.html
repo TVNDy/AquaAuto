@@ -14,14 +14,14 @@
 </style></head><body>
 <header class="top"><div class="brand"><div class="logo">💧</div><div>AquaAuto<div style="font-size:10px;font-weight:650;letter-spacing:.08em;color:#c6e9db;text-transform:uppercase">Quản lý ao nuôi</div></div></div><div class="conn"><span id="conn-dot" class="dot"></span><span id="conn-label">Đang khởi tạo</span></div></header>
 <main class="wrap"><div class="hello"><div><div class="eyebrow">Xin chào</div><h1>Ao nuôi của bạn</h1><p class="sub muted" id="gateway-caption">Đang đọc thông tin Gateway…</p></div></div>
-<aside class="install-hint" id="install-hint" aria-label="Gợi ý ghim AquaAuto vào màn hình chính"><div class="install-hint-main"><span class="install-hint-icon" aria-hidden="true">📌</span><span><button type="button" id="install-hint-open">Ghim AquaAuto vào màn hình chính</button> để mở nhanh; bỏ qua nếu đã thực hiện.</span></div><button type="button" class="install-hint-close" id="install-hint-close" aria-label="Đóng thông báo">×</button></aside>
+<aside class="install-hint" id="install-hint" aria-label="Gợi ý ghim AquaAuto vào màn hình chính"><div class="install-hint-main"><span class="install-hint-icon" aria-hidden="true">📌</span><span><button type="button" id="install-hint-open">Mở AquaAuto nhanh hơn</button> · Ghim vào màn hình chính. Bỏ qua nếu đã ghim.</span></div><button type="button" class="install-hint-close" id="install-hint-close" aria-label="Đóng thông báo">×</button></aside>
 <section class="page active" id="page-dashboard"><div class="dashboardgrid"><div class="panel"><div class="panelhead"><h2>Thiết bị điều khiển</h2><span class="pill" id="gateway-state">Chưa có dữ liệu</span></div><div id="nodes"></div><div class="note" id="truth-note">Trạng thái chỉ thay đổi sau khi nhận xác nhận từ Gateway.</div></div><div class="panel"><div class="panelhead"><h2>Tình trạng Gateway</h2><span class="pill" id="mqtt-pill">Ngoại tuyến</span></div><div class="metrics"><div class="metric"><div class="mlabel">Wi-Fi</div><div class="mval" id="wifi">—</div></div><div class="metric"><div class="mlabel">Tín hiệu</div><div class="mval" id="rssi">— <span style="font-size:10px">dBm</span></div></div><div class="metric"><div class="mlabel">Nguồn thiết bị</div><div class="mval" id="power">—</div></div></div><div class="panelhead" style="margin:20px 0 4px"><h2>Hoạt động gần đây</h2><button class="close" id="clear-log">Xóa</button></div><div id="logs"><div class="empty">Chưa có hoạt động.</div></div></div></div></section>
 <section class="page" id="page-schedules"><div class="panel"><div class="panelhead"><div><h2>Lịch tự động</h2><p class="sub muted" style="margin-top:5px">Thiết lập giờ bật/tắt thiết bị</p></div><span class="pill">Thử nghiệm</span></div><div class="note">Lịch hiện được lưu trên trình duyệt này. Firmware Gateway hiện tại chưa nhận/lưu lịch; lịch chưa tự chạy khi đóng app hoặc mất mạng.</div><form id="schedule-form"><div class="grid2"><div class="field"><label for="schedule-name">Tên lịch</label><input id="schedule-name" maxlength="40" placeholder="Ví dụ: Quạt sáng" required></div><div class="field"><label for="schedule-node">Thiết bị</label><select id="schedule-node"><option value="1">Node 1</option></select></div><div class="field"><label for="schedule-action">Hành động</label><select id="schedule-action"><option value="ON">Bật</option><option value="OFF">Tắt</option></select></div><div class="field"><label for="schedule-time">Giờ</label><input id="schedule-time" type="time" value="06:00" required></div></div><div class="field"><label>Ngày lặp lại</label><div class="days"> <label class="day"><input type="checkbox" value="1" checked> T2</label><label class="day"><input type="checkbox" value="2" checked> T3</label><label class="day"><input type="checkbox" value="3" checked> T4</label><label class="day"><input type="checkbox" value="4" checked> T5</label><label class="day"><input type="checkbox" value="5" checked> T6</label><label class="day"><input type="checkbox" value="6"> T7</label><label class="day"><input type="checkbox" value="0"> CN</label></div></div><button class="btn primary" type="submit">Lưu lịch trên thiết bị này</button></form><div id="schedule-list" style="margin-top:16px"></div></div></section>
-<section class="page" id="page-settings"><div class="panel"><div class="panelhead"><h2>Cài đặt ứng dụng</h2><span class="pill" id="setup-pill">Đang kiểm tra</span></div><p class="help">Thông tin kết nối được tự động lấy từ mã QR. Người dùng không cần nhập Broker, Port hay Client ID. Bản thử nghiệm hiện dùng broker công cộng; không dùng để điều khiển tải điện thật.</p><div class="metric" style="margin:12px 0"><div class="mlabel">Gateway đã ghép nối</div><div class="mval" id="setting-gateway">—</div></div><div class="metric" style="margin:12px 0"><div class="mlabel">Trạng thái kết nối</div><div class="mval" id="setting-conn">Đang kiểm tra…</div></div><button class="btn primary" id="reconnect" type="button">Kết nối lại</button><button class="btn" id="forget" type="button" style="margin-left:6px">Quên Gateway này</button></div><div class="panel"><h2>Hỗ trợ</h2><p class="help">Nếu Gateway mất kết nối, hãy kiểm tra nguồn và Wi-Fi tại tủ điều khiển. Cấu hình Wi-Fi ban đầu vẫn thực hiện riêng qua mạng <b>DyAuto_Config</b>; không nhập mật khẩu Wi-Fi trong AquaAuto.</p><button class="btn primary" id="install-settings" type="button">＋ Cài đặt ứng dụng</button></div></section>
+<section class="page" id="page-settings"><div class="panel"><div class="panelhead"><h2>Cài đặt ứng dụng</h2><span class="pill" id="setup-pill">Đang kiểm tra</span></div><p class="help">Thông tin kết nối được tự động lấy từ mã QR. Người dùng không cần nhập Broker, Port hay Client ID. Bản thử nghiệm hiện dùng broker công cộng; không dùng để điều khiển tải điện thật.</p><div class="metric" style="margin:12px 0"><div class="mlabel">Gateway đã ghép nối</div><div class="mval" id="setting-gateway">—</div></div><div class="metric" style="margin:12px 0"><div class="mlabel">Trạng thái kết nối</div><div class="mval" id="setting-conn">Đang kiểm tra…</div></div><button class="btn primary" id="reconnect" type="button">Kết nối lại</button><button class="btn" id="forget" type="button" style="margin-left:6px">Quên Gateway này</button></div><div class="panel"><h2>Hỗ trợ</h2><p class="help">Nếu Gateway mất kết nối, hãy kiểm tra nguồn và Wi-Fi tại tủ điều khiển. Cấu hình Wi-Fi ban đầu vẫn thực hiện riêng qua mạng <b>DyAuto_Config</b>; không nhập mật khẩu Wi-Fi trong AquaAuto.</p><button class="btn primary" id="install-settings" type="button">Hướng dẫn ghim vào màn hình chính</button></div></section>
 <div class="foot">AquaAuto · Trạng thái dựa trên phản hồi Gateway, không thay thế cảm biến xác nhận tải điện thực tế.</div></main>
 <nav class="bottom" aria-label="Điều hướng chính"><button class="navbtn active" data-page="dashboard"><span class="ico">⌂</span>Tổng quan</button><button class="navbtn" data-page="schedules"><span class="ico">◷</span>Lịch trình</button><button class="navbtn" data-page="settings"><span class="ico">⚙</span>Cài đặt</button></nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<div class="modalback hide" id="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-title"><div class="modal"><div style="display:flex;justify-content:space-between;align-items:center"><div class="modalicon">📲</div><button class="close" id="install-close" aria-label="Đóng">✕</button></div><h2 id="install-title">Cài AquaAuto lên màn hình chính</h2><p>Không phải điện thoại nào cũng cho website tự thêm biểu tượng. AquaAuto sẽ mở hộp thoại cài đặt nếu trình duyệt hỗ trợ; nếu không, hãy làm theo hướng dẫn đúng với thiết bị của bạn.</p><div id="install-instructions" class="installsteps">Đang kiểm tra cách cài đặt phù hợp với trình duyệt…</div><div class="modalactions"><button class="btn" id="install-later">Để sau</button><button class="btn primary" id="install-action">Tiếp tục</button></div><p style="font-size:10px;margin-bottom:0">Bạn có thể cài sau trong mục Cài đặt.</p></div></div>
+<div class="modalback hide" id="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-title"><div class="modal"><div style="display:flex;justify-content:space-between;align-items:center"><div class="modalicon">📲</div><button class="close" id="install-close" aria-label="Đóng">✕</button></div><h2 id="install-title">Cài AquaAuto lên màn hình chính</h2><p>Ghim AquaAuto để lần sau mở nhanh hơn.</p><div id="install-instructions" class="installsteps">Đang kiểm tra cách cài đặt phù hợp với trình duyệt…</div><div class="modalactions"><button class="btn" id="install-later">Để sau</button><button class="btn primary" id="install-action">Xem cách ghim</button></div><p style="font-size:10px;margin-bottom:0">Bạn có thể cài sau trong mục Cài đặt.</p></div></div>
 <script>
 (()=>{'use strict';const $=id=>document.getElementById(id);const params=new URLSearchParams(location.search);const stored=(()=>{try{return JSON.parse(localStorage.getItem('aquaauto.pairing')||'{}')}catch{return {}}})();
 const gateway=(params.get('id')||stored.gateway||'GW_01').trim();const secret=(params.get('key')||stored.secret||'').trim();const broker='broker.emqx.io',port=8084,path='/mqtt';let client=null,pending=null,timeoutHandle=null,toastTimer=null,online=false,logCount=0;let actualState=null,lastGatewayStatusAt=0;const nodes=[{id:1,name:'Thiết bị Node 1',state:null,pending:null}];
@@ -52,27 +52,28 @@ const installDismissed=()=>{try{return localStorage.getItem('aquaauto.installDis
 const setInstallDismissed=()=>{try{localStorage.setItem('aquaauto.installDismissed.v2','1')}catch{}};
 let installEvent=null;
 let installModalOpenedAt=0;
+let installHelpShown=false;
 function renderInstallModal(force=false){
  if(isStandalone){toast('AquaAuto đang chạy dưới dạng ứng dụng đã cài.');return}
  if(!force&&installDismissed())return;
  const box=$('install-modal'),instructions=$('install-instructions'),action=$('install-action');
- box.classList.remove('hide');installModalOpenedAt=Date.now();action.textContent='Cài đặt';
+ box.classList.remove('hide');installModalOpenedAt=Date.now();installHelpShown=false;action.textContent=installEvent?'Cài đặt':'Xem cách ghim';
  if(installEvent){
-  instructions.innerHTML='<b>Đã sẵn sàng cài đặt</b><br>Chrome đã cấp quyền cài đặt AquaAuto. Nhấn <b>Cài đặt</b>, sau đó xác nhận trong hộp thoại của Chrome.';
+  instructions.innerHTML='<b>Sẵn sàng cài đặt</b><br>Nhấn <b>Cài đặt</b> rồi xác nhận trên Chrome.';
  }else if(chromeAndroid){
-  instructions.innerHTML='<b>Android · Google Chrome</b><br>Trang web chưa nhận được quyền mở hộp thoại cài đặt tự động từ Chrome. Nhấn <b>Cài đặt</b> để kiểm tra lại. Nếu Chrome vẫn chưa cấp quyền, mở menu <b>⋮</b> ở góc trên → <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>.<br><small>Để Chrome cho phép cài PWA, hãy mở bằng Chrome (không phải trình duyệt trong Zalo/Facebook), dùng HTTPS và tải trang hoàn chỉnh ít nhất một lần.</small>';
+  instructions.innerHTML='<b>Chrome trên Android</b><br>Mở menu <b>⋮</b> → <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b> → <b>Cài đặt</b>.';
  }else if(safariIOS){
-  instructions.innerHTML='<b>iPhone/iPad · Safari</b><br>1. Mở AquaAuto trực tiếp bằng <b>Safari</b>.<br>2. Nhấn <b>Chia sẻ</b>.<br>3. Chọn <b>Thêm vào MH chính</b> → <b>Thêm</b>.<br><small>Safari không cung cấp API để website tự bật hộp thoại cài đặt.</small>';
+  instructions.innerHTML='<b>Safari trên iPhone/iPad</b><br>Nhấn <b>Chia sẻ</b> → <b>Thêm vào MH chính</b> → <b>Thêm</b>.';
  }else if(ios){
-  instructions.innerHTML='<b>iPhone/iPad</b><br>Mở AquaAuto bằng Safari, nhấn <b>Chia sẻ → Thêm vào MH chính → Thêm</b>.';
+  instructions.innerHTML='<b>iPhone/iPad</b><br>Mở bằng Safari: <b>Chia sẻ</b> → <b>Thêm vào MH chính</b> → <b>Thêm</b>.';
  }else if(android&&samsung){
-  instructions.innerHTML='<b>Android · Samsung Internet</b><br>Mở menu <b>☰</b> → <b>Thêm trang vào</b> → <b>Màn hình chờ</b>. Có thể mở bằng Chrome để dùng PWA install prompt.';
+  instructions.innerHTML='<b>Android</b><br>Mở menu <b>☰</b> → <b>Thêm trang vào</b> → <b>Màn hình chờ</b>.';
  }else if(android){
-  instructions.innerHTML='<b>Android</b><br>Ưu tiên mở AquaAuto bằng <b>Google Chrome</b>. Nếu không có hộp thoại tự động, mở menu trình duyệt và chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>.';
+  instructions.innerHTML='<b>Android</b><br>Mở menu trình duyệt → <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>.';
  }else if(edge||/chrome\//i.test(ua)){
-  instructions.innerHTML='<b>Máy tính · Chrome/Edge</b><br>Nhấn biểu tượng cài đặt ở thanh địa chỉ hoặc mở menu trình duyệt và chọn <b>Cài đặt AquaAuto</b>.';
+  instructions.innerHTML='<b>Máy tính</b><br>Mở menu trình duyệt → <b>Cài đặt AquaAuto</b>.';
  }else{
-  instructions.innerHTML='<b>Trình duyệt hiện tại</b><br>Mở bằng Google Chrome Android để có khả năng cài PWA tự động. Nếu không, tìm <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b> trong menu trình duyệt.';
+  instructions.innerHTML='Mở menu trình duyệt và chọn <b>Thêm vào màn hình chính</b>.';
  }
 }
 window.addEventListener('beforeinstallprompt',e=>{
@@ -80,7 +81,7 @@ window.addEventListener('beforeinstallprompt',e=>{
  if(!isStandalone&&!$('install-modal').classList.contains('hide'))renderInstallModal(true);
 });
 window.addEventListener('appinstalled',()=>{
- installEvent=null;$('install-modal').classList.add('hide');setInstallDismissed();
+ installEvent=null;$('install-modal').classList.add('hide');$('install-hint').classList.add('hide');setInstallDismissed();
  try{localStorage.setItem('aquaauto.installed','1')}catch{}
  toast('AquaAuto đã được cài đặt thành công');
 });
@@ -91,6 +92,7 @@ $('install-hint-open').onclick=()=>renderInstallModal(true);
 $('install-settings').onclick=()=>renderInstallModal(true);
 $('install-close').onclick=$('install-later').onclick=()=>{$('install-modal').classList.add('hide');setInstallDismissed()};
 $('install-action').onclick=async()=>{
+ if(!installEvent&&installHelpShown){$('install-modal').classList.add('hide');return}
  if(installEvent){
   const e=installEvent;
   try{
@@ -104,14 +106,14 @@ $('install-action').onclick=async()=>{
  }
  // The browser does not expose a programmable install prompt at this moment.
  if(chromeAndroid){
-  $('install-instructions').innerHTML='<b>Chưa có hộp thoại cài đặt tự động</b><br>Chrome chưa cấp sự kiện cài đặt cho phiên này. Hãy đóng cửa sổ này, nhấn menu <b>⋮</b> của Chrome và chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>. Nếu không thấy mục này, kiểm tra lại URL GitHub Pages, manifest và Service Worker rồi tải lại trang.';
-  toast('Chrome chưa cấp quyền mở hộp thoại tự động');
+  $('install-instructions').innerHTML='<b>Chrome Android</b><br>Mở menu <b>⋮</b> → <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b> → <b>Cài đặt</b>.';
  }else if(safariIOS||ios){
-  $('install-instructions').innerHTML='<b>Cài trên iPhone/iPad</b><br>Nhấn nút <b>Chia sẻ</b> của Safari → <b>Thêm vào MH chính</b> → <b>Thêm</b>. Website không thể tự thực hiện thay bạn.';
+  $('install-instructions').innerHTML='<b>Safari iPhone/iPad</b><br><b>Chia sẻ</b> → <b>Thêm vào MH chính</b> → <b>Thêm</b>.';
  }else{
-  $('install-instructions').innerHTML='<b>Chưa có hộp thoại cài đặt tự động</b><br>Mở menu trình duyệt và chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>. Hãy thử mở bằng Google Chrome nếu đang dùng trình duyệt khác.';
-  toast('Trình duyệt chưa cấp quyền cài đặt tự động');
+  $('install-instructions').innerHTML='Mở menu trình duyệt → <b>Thêm vào màn hình chính</b>.';
  }
+ $('install-action').textContent='Đã hiểu';
+ installHelpShown=true;
 };
 // No automatic install modal: a persistent hint is shown across all tabs instead.
 // Users can open the install instructions from the hint or Settings.
