@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#047857">
   <title>AquaAuto - Quản Lý Bờ Ao</title>
+  <link rel="manifest" href="manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
@@ -23,7 +24,11 @@
       <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center font-black text-emerald-50">A</div>
       <div>
         <h1 class="text-base font-bold leading-tight">AquaAuto</h1>
-        <p class="text-[11px] text-emerald-200">Trạm: <span id="header-gw-id" class="font-mono font-bold">--</span></p>
+        <p class="text-[11px] text-emerald-200">
+          Trạm: <span id="header-gw-id" class="font-mono font-bold">--</span>
+          &nbsp;•&nbsp;
+          🕒 <span id="header-gw-clock" class="font-mono font-bold">--:--:--</span>
+        </p>
       </div>
     </div>
     <div id="conn-pill" class="flex items-center space-x-1.5 bg-emerald-900/60 px-3 py-1 rounded-full text-xs border border-emerald-500/30">
@@ -104,16 +109,33 @@
 
     <!-- TAB 2: LỊCH TRÌNH TỰ ĐỘNG -->
     <section id="tab-schedules" class="hidden space-y-4">
+      <!-- Thẻ đồng hồ thực tế của Gateway -->
+      <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wide block">Giờ thực tế trên Gateway</span>
+          <div class="flex items-baseline space-x-2 mt-0.5">
+            <span id="gw-clock-big" class="text-2xl font-mono font-black text-emerald-900">--:--:--</span>
+            <span id="gw-date-text" class="text-xs text-emerald-700 font-medium">--/--/----</span>
+          </div>
+          <p id="gw-sched-status" class="text-[11px] text-emerald-700 mt-1">GW đang lưu: <b>--</b> lịch</p>
+        </div>
+        <button onclick="syncTimeToGateway(false)" class="bg-white hover:bg-emerald-100 active:scale-95 text-emerald-800 text-xs font-bold px-3 py-2 rounded-xl border border-emerald-300 shadow-sm shrink-0">
+          🔄 Đồng bộ giờ
+        </button>
+      </div>
+
       <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
-        <h2 class="text-base font-bold text-slate-900">Lịch Hẹn Giờ Tự Động</h2>
-        <p class="text-xs text-slate-500">Lưu danh sách lịch mẫu (tính năng đồng bộ chạy offline trên Gateway sẽ cập nhật ở giai đoạn kế tiếp).</p>
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Lịch Hẹn Giờ Tự Động</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Lưu trực tiếp vào Flash của Gateway (tự chạy đúng giờ kể cả khi rớt Wi-Fi).</p>
+        </div>
         <div class="flex space-x-2">
-          <input id="sched-time" type="time" value="06:00" class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm">
-          <select id="sched-action" class="border border-slate-300 rounded-xl px-3 py-2 text-sm">
+          <input id="sched-time" type="time" value="06:00" class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm bg-slate-50">
+          <select id="sched-action" class="border border-slate-300 rounded-xl px-3 py-2 text-sm bg-slate-50 font-semibold">
             <option value="ON">BẬT</option>
             <option value="OFF">TẮT</option>
           </select>
-          <button onclick="addSchedule()" class="bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl">+ Thêm</button>
+          <button onclick="addSchedule()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold px-4 py-2 rounded-xl transition">+ Thêm</button>
         </div>
         <div id="schedule-list" class="space-y-2 pt-2"></div>
       </div>
@@ -137,6 +159,7 @@
           <div><span class="text-slate-400">Secret Key:</span> <b id="info-key">--</b></div>
           <div class="break-all"><span class="text-slate-400">Topic CMD:</span> <span id="info-cmd">--</span></div>
           <div class="break-all"><span class="text-slate-400">Topic STS:</span> <span id="info-sts">--</span></div>
+          <div class="break-all"><span class="text-slate-400">Topic SCH:</span> <span id="info-sch">--</span></div>
         </div>
 
         <button onclick="resetGatewayBinding()" class="w-full bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold py-2.5 rounded-xl">
@@ -170,30 +193,63 @@
     if (params.get('id') && params.get('key')) {
       localStorage.setItem('aqua_gw_id', params.get('id'));
       localStorage.setItem('aqua_gw_key', params.get('key'));
-      // Lam sach thanh dia chi sau khi luu
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     const GATEWAY_ID = localStorage.getItem('aqua_gw_id') || 'GW01';
     const SECRET_KEY = localStorage.getItem('aqua_gw_key') || 'K87B';
 
-    const BROKER_URL   = 'wss://broker.emqx.io:8084/mqtt';
-    const COMMAND_TOPIC = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/command`;
-    const STATUS_TOPIC  = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/status`;
+    const BROKER_URL     = 'wss://broker.emqx.io:8084/mqtt';
+    const COMMAND_TOPIC  = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/command`;
+    const STATUS_TOPIC   = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/status`;
+    const SCHEDULE_TOPIC = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/schedule`;
 
-    // Hien thi thong tin tram
     document.getElementById('header-gw-id').innerText = GATEWAY_ID;
     document.getElementById('info-gw').innerText  = GATEWAY_ID;
     document.getElementById('info-key').innerText = SECRET_KEY;
     document.getElementById('info-cmd').innerText = COMMAND_TOPIC;
     document.getElementById('info-sts').innerText = STATUS_TOPIC;
+    document.getElementById('info-sch').innerText = SCHEDULE_TOPIC;
 
-    // ===== 2. BIEN TRANG THAI (STATE OF TRUTH + OFFLINE SAFE) =====
+    // ===== 2. BIEN TRANG THAI & DONG HO REAL-TIME GW =====
     let isConnected    = false;
-    let lastKnownState = false; // Khong bao OFF gia khi rot mang
+    let lastKnownState = false;
     let isPending      = false;
     let isDebouncing   = false;
     let pendingTimer   = null;
+    let schedules      = JSON.parse(localStorage.getItem('aqua_schedules') || '[]');
+
+    let gwClockSynced  = false;
+    let gwTimeOffsetMs = 0;
+    let lastAutoSyncAt = 0;
+
+    // Nhay dong ho GW moi 1 giay (real-time)
+    setInterval(() => {
+      if (!gwClockSynced) return;
+      const gwNow = new Date(Date.now() + gwTimeOffsetMs);
+      const timeStr = gwNow.toLocaleTimeString('vi-VN', {
+        hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+      const dateStr = gwNow.toLocaleDateString('vi-VN', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
+      });
+      document.getElementById('header-gw-clock').innerText = timeStr;
+      document.getElementById('gw-clock-big').innerText    = timeStr;
+      document.getElementById('gw-date-text').innerText    = dateStr;
+    }, 1000);
+
+    function syncTimeToGateway(silent) {
+      if (!isConnected) {
+        if (!silent) showToast('Chưa có kết nối Internet!', 'bg-rose-600');
+        return;
+      }
+      const payload = JSON.stringify({
+        cmd: 'SYNC_TIME',
+        timestamp: Math.floor(Date.now() / 1000)
+      });
+      client.publish(COMMAND_TOPIC, payload);
+      if (!silent) showToast('Đã gửi lệnh đồng bộ giờ xuống Gateway', 'bg-emerald-600');
+    }
 
     // ===== 3. KET NOI MQTT =====
     const client = mqtt.connect(BROKER_URL, {
@@ -206,6 +262,7 @@
       isConnected = true;
       updateConnUI(true);
       client.subscribe(STATUS_TOPIC);
+      client.subscribe(SCHEDULE_TOPIC);
       showToast('Đã kết nối máy chủ điều khiển', 'bg-emerald-600');
     });
 
@@ -217,12 +274,25 @@
     client.on('offline', () => {
       isConnected = false;
       updateConnUI(false, 'Mất mạng');
-      // Offline Safe: giu nguyen giao dien nut o lastKnownState
       clearPending();
       renderSwitch(lastKnownState);
     });
 
     client.on('message', (topic, message) => {
+      // Nhan dong bo lich hen gio
+      if (topic === SCHEDULE_TOPIC) {
+        try {
+          const list = JSON.parse(message.toString());
+          if (Array.isArray(list)) {
+            schedules = list;
+            localStorage.setItem('aqua_schedules', JSON.stringify(schedules));
+            renderSchedules();
+          }
+        } catch (e) {}
+        return;
+      }
+
+      // Nhan trang thai & gio thuc te tu Gateway
       if (topic !== STATUS_TOPIC) return;
       try {
         const data = JSON.parse(message.toString());
@@ -230,18 +300,40 @@
 
         clearPending();
 
-        // Cap nhat thong so song
+        // Cap nhat dong ho thuc te cua Gateway
+        if (data.time_synced && data.gw_epoch > 1700000000) {
+          gwClockSynced  = true;
+          gwTimeOffsetMs = (data.gw_epoch * 1000) - Date.now();
+          if (data.gw_time) {
+            document.getElementById('header-gw-clock').innerText = data.gw_time;
+            document.getElementById('gw-clock-big').innerText    = data.gw_time;
+          }
+        } else if (data.time_synced === false) {
+          gwClockSynced = false;
+          document.getElementById('header-gw-clock').innerText = 'Chưa có giờ';
+          document.getElementById('gw-clock-big').innerText    = 'Chưa đồng bộ';
+          // Tu dong bu gio tu dien thoai xuong Gateway (chong spam 15 giay)
+          if (Date.now() - lastAutoSyncAt > 15000) {
+            lastAutoSyncAt = Date.now();
+            syncTimeToGateway(true);
+          }
+        }
+
+        // Hien thi so lich GW dang giu trong RAM/Flash
+        if (data.sched_count !== undefined) {
+          document.getElementById('gw-sched-status').innerHTML =
+            `GW đang lưu: <b>${data.sched_count}</b> lịch hoạt động`;
+        }
+
         if (data.lora_rssi !== undefined) document.getElementById('lora-rssi').innerText = data.lora_rssi;
         if (data.wifi_rssi !== undefined) document.getElementById('wifi-rssi').innerText = data.wifi_rssi;
 
-        // Canh bao mat dien 220V
         if (data.power === 'LOST') {
           document.getElementById('power-alert').classList.remove('hidden');
         } else {
           document.getElementById('power-alert').classList.add('hidden');
         }
 
-        // Kiem tra Node co tra ACK khong
         const onlineBadge = document.getElementById('node-online-badge');
         if (data.online === false) {
           onlineBadge.innerText = 'Mất sóng Node';
@@ -254,7 +346,6 @@
         onlineBadge.innerText = 'Online';
         onlineBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
 
-        // State of Truth: chi cap nhat trang thai khi co xac nhan that tu phan cung
         lastKnownState = (data.state === 'ON');
         renderSwitch(lastKnownState);
 
@@ -297,10 +388,8 @@
       });
       client.publish(COMMAND_TOPIC, payload);
 
-      // Khoa chong doi toi thieu 2 giay
       setTimeout(() => { isDebouncing = false; }, 2000);
 
-      // Timeout 6 giay neu Gateway mat mang hoac khong phan hoi
       clearTimeout(pendingTimer);
       pendingTimer = setTimeout(() => {
         if (isPending) {
@@ -362,7 +451,7 @@
       setTimeout(() => toast.classList.add('hidden'), 3000);
     }
 
-    // ===== 6. TAB, DOI TEN & LICH TRINH =====
+    // ===== 6. TAB, DOI TEN & DONG BO LICH HEN GIO =====
     function switchTab(tab) {
       ['dashboard', 'schedules', 'settings'].forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
@@ -395,8 +484,6 @@
       }
     }
 
-    // Lich trinh mau luu cuc bo
-    let schedules = JSON.parse(localStorage.getItem('aqua_schedules') || '[]');
     function renderSchedules() {
       const list = document.getElementById('schedule-list');
       if (schedules.length === 0) {
@@ -404,28 +491,57 @@
         return;
       }
       list.innerHTML = schedules.map((s, idx) => `
-        <div class="flex justify-between items-center bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs">
-          <span><b>${s.time}</b> — <span class="${s.action === 'ON' ? 'text-emerald-600' : 'text-rose-600'} font-bold">${s.action === 'ON' ? 'BẬT' : 'TẮT'}</span></span>
-          <button onclick="removeSchedule(${idx})" class="text-rose-500 font-bold">Xóa</button>
+        <div class="flex justify-between items-center bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs ${s.enabled === false ? 'opacity-50' : ''}">
+          <div class="flex items-center space-x-2.5">
+            <input type="checkbox" ${s.enabled !== false ? 'checked' : ''} onchange="toggleSchedule(${idx})" class="w-4 h-4 accent-emerald-600 rounded">
+            <span class="font-mono text-sm font-bold text-slate-800">${s.time}</span>
+            <span class="${s.action === 'ON' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'} px-2 py-0.5 rounded font-bold">${s.action === 'ON' ? 'BẬT' : 'TẮT'}</span>
+          </div>
+          <button onclick="removeSchedule(${idx})" class="text-rose-500 font-bold px-2 py-1">Xóa</button>
         </div>
       `).join('');
     }
-    function addSchedule() {
-      schedules.push({
-        time: document.getElementById('sched-time').value,
-        action: document.getElementById('sched-action').value
-      });
+
+    function syncSchedulesToGateway() {
       localStorage.setItem('aqua_schedules', JSON.stringify(schedules));
       renderSchedules();
+      if (isConnected) {
+        client.publish(SCHEDULE_TOPIC, JSON.stringify(schedules), { retain: true });
+        showToast('Đã gửi lịch xuống Gateway', 'bg-emerald-600');
+      } else {
+        showToast('Mất mạng! Lịch chưa gửi được xuống Gateway.', 'bg-rose-600');
+      }
     }
+
+    function addSchedule() {
+      const timeVal = document.getElementById('sched-time').value;
+      if (!timeVal) return;
+      if (schedules.length >= 10) {
+        showToast('Tối đa 10 mốc lịch hẹn giờ!', 'bg-amber-600');
+        return;
+      }
+      schedules.push({
+        time: timeVal,
+        action: document.getElementById('sched-action').value,
+        enabled: true
+      });
+      schedules.sort((a, b) => a.time.localeCompare(b.time));
+      syncSchedulesToGateway();
+    }
+
+    function toggleSchedule(idx) {
+      schedules[idx].enabled = (schedules[idx].enabled === false);
+      syncSchedulesToGateway();
+    }
+
     function removeSchedule(idx) {
       schedules.splice(idx, 1);
-      localStorage.setItem('aqua_schedules', JSON.stringify(schedules));
-      renderSchedules();
+      syncSchedulesToGateway();
     }
+
     renderSchedules();
 
-    // ===== 7. POP-UP CAI DAT PWA =====
+    // ===== 7. PWA INSTALL & SERVICE WORKER =====
     let deferredPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -439,6 +555,12 @@
       deferredPrompt = null;
       document.getElementById('pwa-banner').classList.add('hidden');
     });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>
