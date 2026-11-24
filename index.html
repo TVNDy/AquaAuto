@@ -159,7 +159,6 @@
           <div><span class="text-slate-400">Secret Key:</span> <b id="info-key">--</b></div>
           <div class="break-all"><span class="text-slate-400">Topic CMD:</span> <span id="info-cmd">--</span></div>
           <div class="break-all"><span class="text-slate-400">Topic STS:</span> <span id="info-sts">--</span></div>
-          <div class="break-all"><span class="text-slate-400">Topic SCH:</span> <span id="info-sch">--</span></div>
         </div>
 
         <button onclick="resetGatewayBinding()" class="w-full bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold py-2.5 rounded-xl">
@@ -199,17 +198,15 @@
     const GATEWAY_ID = localStorage.getItem('aqua_gw_id') || 'GW01';
     const SECRET_KEY = localStorage.getItem('aqua_gw_key') || 'K87B';
 
-    const BROKER_URL     = 'wss://broker.emqx.io:8084/mqtt';
-    const COMMAND_TOPIC  = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/command`;
-    const STATUS_TOPIC   = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/status`;
-    const SCHEDULE_TOPIC = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/schedule`;
+    const BROKER_URL    = 'wss://broker.emqx.io:8084/mqtt';
+    const COMMAND_TOPIC = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/command`;
+    const STATUS_TOPIC  = `dyauto/${GATEWAY_ID}_${SECRET_KEY}/status`;
 
     document.getElementById('header-gw-id').innerText = GATEWAY_ID;
     document.getElementById('info-gw').innerText  = GATEWAY_ID;
     document.getElementById('info-key').innerText = SECRET_KEY;
     document.getElementById('info-cmd').innerText = COMMAND_TOPIC;
     document.getElementById('info-sts').innerText = STATUS_TOPIC;
-    document.getElementById('info-sch').innerText = SCHEDULE_TOPIC;
 
     // ===== 2. BIEN TRANG THAI & DONG HO REAL-TIME GW =====
     let isConnected    = false;
@@ -223,7 +220,6 @@
     let gwTimeOffsetMs = 0;
     let lastAutoSyncAt = 0;
 
-    // Nhay dong ho GW moi 1 giay (real-time)
     setInterval(() => {
       if (!gwClockSynced) return;
       const gwNow = new Date(Date.now() + gwTimeOffsetMs);
@@ -262,7 +258,6 @@
       isConnected = true;
       updateConnUI(true);
       client.subscribe(STATUS_TOPIC);
-      client.subscribe(SCHEDULE_TOPIC);
       showToast('Đã kết nối máy chủ điều khiển', 'bg-emerald-600');
     });
 
@@ -279,20 +274,6 @@
     });
 
     client.on('message', (topic, message) => {
-      // Nhan dong bo lich hen gio
-      if (topic === SCHEDULE_TOPIC) {
-        try {
-          const list = JSON.parse(message.toString());
-          if (Array.isArray(list)) {
-            schedules = list;
-            localStorage.setItem('aqua_schedules', JSON.stringify(schedules));
-            renderSchedules();
-          }
-        } catch (e) {}
-        return;
-      }
-
-      // Nhan trang thai & gio thuc te tu Gateway
       if (topic !== STATUS_TOPIC) return;
       try {
         const data = JSON.parse(message.toString());
@@ -312,7 +293,6 @@
           gwClockSynced = false;
           document.getElementById('header-gw-clock').innerText = 'Chưa có giờ';
           document.getElementById('gw-clock-big').innerText    = 'Chưa đồng bộ';
-          // Tu dong bu gio tu dien thoai xuong Gateway (chong spam 15 giay)
           if (Date.now() - lastAutoSyncAt > 15000) {
             lastAutoSyncAt = Date.now();
             syncTimeToGateway(true);
@@ -506,7 +486,11 @@
       localStorage.setItem('aqua_schedules', JSON.stringify(schedules));
       renderSchedules();
       if (isConnected) {
-        client.publish(SCHEDULE_TOPIC, JSON.stringify(schedules), { retain: true });
+        const payload = JSON.stringify({
+          cmd: 'SET_SCHEDULES',
+          list: schedules
+        });
+        client.publish(COMMAND_TOPIC, payload);
         showToast('Đã gửi lịch xuống Gateway', 'bg-emerald-600');
       } else {
         showToast('Mất mạng! Lịch chưa gửi được xuống Gateway.', 'bg-rose-600');
